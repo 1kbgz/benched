@@ -1,0 +1,21 @@
+benched
+=======
+
+.. py:module:: benched
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   benched.__version__
+
+
+Package Contents
+----------------
+
+.. py:data:: __version__
+   :value: '0.1.0'
+
+
