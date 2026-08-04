@@ -45,8 +45,8 @@ lint-js:  ## run js linter
 	cd js; pnpm lint
 
 lint-docs:  ## lint docs with mdformat and codespell
-	python -m mdformat --check README.md docs/how-to
-	python -m codespell_lib README.md docs/index.rst docs/how-to
+	python -m mdformat --check README.md docs/overview.md docs/how-to
+	python -m codespell_lib README.md docs/overview.md docs/how-to
 
 lint: lint-js lint-py lint-docs  ## run project linters
 
@@ -62,8 +62,8 @@ fix-js:  ## fix js formatting
 	cd js; pnpm fix
 
 fix-docs:  ## autoformat docs with mdformat and codespell
-	python -m mdformat README.md docs/how-to
-	python -m codespell_lib --write README.md docs/index.rst docs/how-to
+	python -m mdformat README.md docs/overview.md docs/how-to
+	python -m codespell_lib --write README.md docs/overview.md docs/how-to
 
 fix: fix-js fix-py fix-docs  ## run project autoformatters
 
@@ -115,9 +115,14 @@ coverage: coverage-py coverage-js  ## run all tests and collect test coverage
 # alias
 tests: test
 
-.PHONY: docs
-docs:  ## build Benched's Sphinx documentation with warnings as errors
-	python -m sphinx -W -b html docs build/docs
+.PHONY: docs docs-history
+docs-history:  ## backfill Benched's self-benchmarks for the embedded report
+	rm -rf build/docs-results build/docs-seed-results
+	python -m benched run --quick --results-dir build/docs-seed-results benchmarks
+	python -m benched.demo --results-dir build/docs-seed-results --output-dir build/docs-results --count 30
+
+docs: docs-history  ## build Benched's documentation with Yardang
+	yardang build
 
 .PHONY: demo demo-backfill demo-serve
 demo:  ## record two self-benchmark runs and build a local report

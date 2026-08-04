@@ -34,14 +34,15 @@ for performance comparisons.
 
 ## Build the project documentation
 
-Build Benched's own Sphinx pages with warnings treated as errors:
+Build Benched's own pages through Yardang:
 
 ```bash
 make docs
 ```
 
-The build writes `build/docs/index.html` and embeds the canonical report through
-`benched.sphinx`.
+The build records Benched's benchmark suite once, backfills 30 revisions across five
+machines and three Python versions, then writes `docs/html/index.html`. The overview
+page embeds those results through `benched.sphinx`.
 
 ## Test installed distributions
 

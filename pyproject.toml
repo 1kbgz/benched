@@ -47,15 +47,14 @@ develop = [
     "jsonschema>=4.23",
     "mdformat",
     "mdformat-tables>=1",
-    "myst-parser>=3",
     "pytest",
     "pytest-cov",
     "ruff",
-    "sphinx>=7",
     "twine",
     "ty",
     "uv",
     "wheel",
+    "yardang[themes]>=0.7.1",
 ]
 sphinx = [
     "sphinx>=7",
@@ -71,6 +70,21 @@ Homepage = "https://github.com/1kbgz/benched"
 [tool.benched]
 benchmark_paths = ["benchmarks"]
 results_dir = ".benched/results"
+
+[tool.yardang]
+title = "Benched"
+root = "README.md"
+pages = [
+    "docs/overview.md",
+    "docs/how-to/run-in-prepared-environments.md",
+    "docs/how-to/import-pytest-benchmark.md",
+    "docs/how-to/migrate-from-asv.md",
+    "docs/how-to/customize-sphinx-report.md",
+    "docs/how-to/validate-release.md",
+]
+use-autoapi = false
+extensions = ["benched.sphinx"]
+exclude-patterns = ["build"]
 
 [tool.bumpversion]
 current_version = "0.1.0"
