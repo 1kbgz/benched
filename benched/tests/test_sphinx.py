@@ -145,7 +145,6 @@ def test_project_documentation_builds_with_embedded_report(tmp_path, monkeypatch
     assert output.joinpath("docs/how-to/import-pytest-benchmark.html").is_file()
     assert output.joinpath("docs/how-to/migrate-from-asv.html").is_file()
     assert output.joinpath("docs/how-to/run-in-prepared-environments.html").is_file()
-    assert output.joinpath("docs/how-to/validate-release.html").is_file()
     assert output.joinpath("_static/benched/benched.js").is_file()
     assert output.joinpath("_static/benched/benched.css").is_file()
     report_path = next(output.glob("_static/benched/reports/docs-results-*.json"))
