@@ -78,6 +78,14 @@ commit = true
 tag = true
 commit_args = "-s"
 
+[tool.check-dist.sdist]
+present = ["benched", "js", "docs", "LICENSE", "pyproject.toml", "README.md"]
+absent = [".copier-answers.yaml", "Makefile", ".github", "dist", "examples", "tests", ".gitattributes", ".vscode"]
+
+[tool.check-dist.wheel]
+present = ["benched"]
+absent = [".gitignore", ".copier-answers.yaml", "Makefile", "pyproject.toml", ".github", "dist", "docs", "examples", "tests", "js"]
+
 [[tool.bumpversion.files]]
 filename = "benched/__init__.py"
 search = '__version__ = "{current_version}"'
