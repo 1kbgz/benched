@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "fsspec>=2024.6",
+    "fsspec>=2026.7.0",
     "pluggy>=1.5,<2",
     "pytest>=8.1",
     "pytest-benchmark>=5.2,<6",
