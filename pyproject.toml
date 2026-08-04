@@ -80,7 +80,6 @@ pages = [
     "docs/how-to/import-pytest-benchmark.md",
     "docs/how-to/migrate-from-asv.md",
     "docs/how-to/customize-sphinx-report.md",
-    "docs/how-to/validate-release.md",
 ]
 use-autoapi = false
 extensions = ["benched.sphinx"]
