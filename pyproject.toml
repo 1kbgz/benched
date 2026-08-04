@@ -44,7 +44,7 @@ develop = [
     "codespell",
     "hatch-js",
     "hatchling",
-    "jsonschema>=4.23",
+    "jsonschema>=4.26.0",
     "mdformat",
     "mdformat-tables>=1",
     "pytest",
