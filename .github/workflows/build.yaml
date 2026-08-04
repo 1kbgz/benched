@@ -44,9 +44,6 @@ jobs:
         with:
           version: ${{ matrix.python-version }}
 
-      - name: Setup Rust
-        uses: actions-ext/rust/setup@3de300f3071e758a1dd8545b884288a35e5d7f81
-
       - name: Setup Node.js
         uses: actions-ext/node/setup@fc13a6e61395a87bb327bca57cf087d78ede3553
         with:
@@ -92,16 +89,8 @@ jobs:
         run: make dist
         if: matrix.os == 'ubuntu-latest'
 
-      - name: Test wheel
-        uses: actions-ext/python/test-wheel@a3f3953ef26a519ab7b6a56b94d06fa1b31ab3f3
-        with:
-          module: benched
-        if: matrix.os == 'ubuntu-latest'
-
-      - name: Test source distribution
-        uses: actions-ext/python/test-sdist@a3f3953ef26a519ab7b6a56b94d06fa1b31ab3f3
-        with:
-          module: benched
+      - name: Test installed distributions
+        run: make test-dist
         if: matrix.os == 'ubuntu-latest'
 
       - name: Upload distributions
@@ -110,3 +99,55 @@ jobs:
           name: dist-${{matrix.os}}
           path: dist
         if: matrix.os == 'ubuntu-latest'
+
+  compatibility:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: ubuntu-latest
+            python-version: "3.13"
+          - os: ubuntu-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.13"
+          - os: windows-latest
+            python-version: "3.13"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions-ext/python/setup@a3f3953ef26a519ab7b6a56b94d06fa1b31ab3f3
+        with:
+          version: ${{ matrix.python-version }}
+
+      - name: Setup Node.js
+        uses: actions-ext/node/setup@fc13a6e61395a87bb327bca57cf087d78ede3553
+        with:
+          version: 22.x
+
+      - name: Build frontend assets
+        run: |
+          pnpm --dir js install --frozen-lockfile
+          pnpm --dir js build
+
+      - name: Install Python package
+        run: python -m pip install -e ".[develop]"
+
+      - name: Test Python package and Sphinx integration
+        run: python -m pytest -q benched/tests
+
+      - name: Upload test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+          path: junit.xml
+        if: ${{ always() }}

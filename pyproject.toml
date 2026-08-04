@@ -47,6 +47,7 @@ develop = [
     "jsonschema>=4.23",
     "mdformat",
     "mdformat-tables>=1",
+    "myst-parser>=3",
     "pytest",
     "pytest-cov",
     "ruff",
@@ -178,11 +179,3 @@ section-order = [
     "F401",
     "F403",
 ]
-
-[tool.yardang]
-title = "benched"
-root = "README.md"
-pages = [
-    "docs/how-to/migrate-from-asv.md",
-]
-use-autoapi = true

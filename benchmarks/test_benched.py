@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -50,6 +51,71 @@ def history() -> tuple[Run, ...]:
 
 
 @pytest.fixture(scope="session")
+def large_history() -> tuple[Run, ...]:
+    started = datetime(2026, 1, 1, tzinfo=UTC)
+    machines = (
+        ("linux-arm", "Linux", "arm64", 8.0),
+        ("linux-x86", "Linux", "x86_64", 16.0),
+        ("macos-arm", "Darwin", "arm64", 32.0),
+        ("windows-x86", "Windows", "AMD64", 24.0),
+        ("cloud-x86", "Linux", "x86_64", 4.0),
+    )
+    python_versions = ("3.11.9", "3.12.13", "3.13.7")
+    runs = []
+    for revision in range(100):
+        timestamp = (started + timedelta(days=revision)).isoformat()
+        machine_id, platform, architecture, memory_gib = machines[revision % len(machines)]
+        python_version = python_versions[revision % len(python_versions)]
+        measurements = tuple(
+            Measurement(
+                benchmark_id=f"benched.report.compile|case={case}",
+                nodeid=f"benchmarks/test_benched.py::test_compile_report[{case}]",
+                name=f"test_compile_report[{case}]",
+                group="report",
+                parameters={"case": case},
+                unit="seconds",
+                stats={
+                    "median": (case + 1) / 100_000 * (1 + revision / 1_000),
+                    "mean": (case + 1) / 95_000 * (1 + revision / 1_000),
+                },
+            )
+            for case in range(1_000)
+        )
+        runs.append(
+            Run(
+                run_id=f"large-run-{revision:03d}",
+                started_at=timestamp,
+                ended_at=(started + timedelta(days=revision, seconds=1)).isoformat(),
+                status="success",
+                exit_code=0,
+                suite=Identity(name="benched", revision=f"suite-{revision:03d}"),
+                subject=Identity(name="benched", version=f"0.{revision}.0", revision=f"subject-{revision:03d}"),
+                machine=MachineInfo(
+                    id=machine_id,
+                    fingerprint=machine_id,
+                    metadata={"memory_gib": memory_gib},
+                ),
+                environment=EnvironmentInfo(
+                    fingerprint=f"cpython-{python_version}-{platform}-{architecture}",
+                    python_implementation="CPython",
+                    python_version=python_version,
+                    platform=platform,
+                    architecture=architecture,
+                ),
+                tool=ToolInfo(benched="0.1.0", pytest=pytest.__version__, pytest_benchmark="5.2.3"),
+                measurements=measurements,
+                provenance=Provenance(source_format="benched-benchmark"),
+            )
+        )
+    return tuple(runs)
+
+
+@pytest.fixture(scope="session")
+def large_report(large_history):
+    return compile_report(large_history)
+
+
+@pytest.fixture(scope="session")
 def pytest_benchmark_document() -> dict[str, object]:
     return {
         "version": "5.2.3",
@@ -70,10 +136,18 @@ def pytest_benchmark_document() -> dict[str, object]:
 
 @pytest.mark.benchmark(group="report")
 @pytest.mark.parametrize("run_count", [10, 100])
-def test_compile_report(benchmark, history, run_count):
-    report = benchmark(compile_report, history[:run_count])
+def test_compile_report(benchmark, large_history, run_count):
+    report = benchmark(compile_report, large_history[:run_count])
 
     assert len(report.source_run_ids) == run_count
+    assert len(report.benchmarks) == 1_000
+
+
+@pytest.mark.benchmark(group="report")
+def test_serialize_report(benchmark, large_report):
+    payload = benchmark(json.dumps, large_report.to_dict(), indent=2, ensure_ascii=True)
+
+    assert len(payload) > 1_000_000
 
 
 @pytest.mark.benchmark(group="query")

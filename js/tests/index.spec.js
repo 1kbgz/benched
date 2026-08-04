@@ -14,6 +14,71 @@ async function toggle(page, panel, label) {
     .click();
 }
 
+function largeReport(revisionCount = 100, benchmarkCount = 100) {
+  const machines = [
+    ["linux-arm", "Linux", "arm64", 8],
+    ["linux-x86", "Linux", "x86_64", 16],
+    ["macos-arm", "Darwin", "arm64", 32],
+    ["windows-x86", "Windows", "AMD64", 24],
+    ["cloud-x86", "Linux", "x86_64", 4],
+  ];
+  const pythons = ["3.11.9", "3.12.13", "3.13.7"];
+  const runs = [];
+  for (let revision = 0; revision < revisionCount; revision += 1) {
+    for (const [machine, platform, architecture, memory] of machines) {
+      for (const python of pythons) {
+        const runId = `run-${revision}-${machine}-${python}`;
+        runs.push({
+          run_id: runId,
+          started_at: new Date(Date.UTC(2026, 0, revision + 1)).toISOString(),
+          status: "success",
+          suite: { name: "benched", revision: `suite-${revision}` },
+          subject: {
+            name: "benched",
+            version: `0.${revision}.0`,
+            revision: `subject-${revision}`,
+          },
+          machine: { id: machine, metadata: { memory_gib: memory } },
+          environment: {
+            python_version: python,
+            platform,
+            architecture,
+          },
+        });
+      }
+    }
+  }
+  const benchmarks = Array.from({ length: benchmarkCount }, (_, index) => ({
+    benchmark_id: `benchmarks/test_benched.py::test_compile_report|case=${index}`,
+    nodeid: `benchmarks/test_benched.py::test_compile_report[${index}]`,
+    name: `test_compile_report[${index}]`,
+    group: "report",
+    parameters: { case: index },
+    unit: "seconds",
+    series: runs.map((run, runIndex) => {
+      const median = 2 + index / benchmarkCount + runIndex / runs.length;
+      return {
+        run_id: run.run_id,
+        metrics: {
+          median,
+          mean: median * 1.02,
+          min: median * 0.95,
+          max: median * 1.08,
+          ops: 1 / median,
+        },
+      };
+    }),
+  }));
+  return {
+    schema_version: 1,
+    generated_at: "2026-04-10T00:00:00+00:00",
+    source_run_ids: runs.map((run) => run.run_id),
+    runs,
+    benchmarks,
+    warnings: [],
+  };
+}
+
 test.describe("Benched report", () => {
   test("loads report data and changes among every view", async ({ page }) => {
     await page.goto("/");
@@ -251,5 +316,53 @@ test.describe("Benched report", () => {
     await expect(page.getByRole("alert")).toContainText(
       "Unable to load report: 404",
     );
+  });
+
+  test("renders and filters a realistic large multi-machine report", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    const payload = JSON.stringify(largeReport());
+    await page.route("**/large-report.json", (route) =>
+      route.fulfill({ contentType: "application/json", body: payload }),
+    );
+    await page.goto("/");
+
+    const started = Date.now();
+    const report = page.locator("benched-report");
+    await report.evaluate((element) =>
+      element.setAttribute("src", "large-report.json"),
+    );
+    await expect(report.locator(".benched-header small")).toHaveText(
+      "1500 runs · 100 benchmarks",
+    );
+    await expect(report.locator(".benched-benchmark-list a")).toHaveCount(100);
+    const overviewMilliseconds = Date.now() - started;
+
+    await select(page, ".benched-view-select", "trend");
+    await expect(report.locator(".benched-chart canvas").first()).toBeVisible();
+    await expect(report.locator(".benched-chart-legend span")).toHaveCount(15);
+    await toggle(page, ".benched-machine-select", "windows-x86");
+    await expect(report.locator(".benched-chart-legend span")).toHaveCount(12);
+    const trendMilliseconds = Date.now() - started;
+
+    await testInfo.attach("large-report-performance.json", {
+      body: JSON.stringify(
+        {
+          bytes: new TextEncoder().encode(payload).length,
+          points: 150_000,
+          overview_milliseconds: overviewMilliseconds,
+          trend_milliseconds: trendMilliseconds,
+        },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    });
+    console.info(
+      `large report: ${payload.length} bytes, overview ${overviewMilliseconds} ms, filtered trend ${trendMilliseconds} ms`,
+    );
+    expect(overviewMilliseconds).toBeLessThan(15_000);
+    expect(trendMilliseconds).toBeLessThan(20_000);
   });
 });

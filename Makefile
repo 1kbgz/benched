@@ -38,15 +38,15 @@ install:  ## install python library
 #########
 .PHONY: lint-py lint-js lint-docs lint lints
 lint-py:  ## run python linter with ruff
-	python -m ruff check benched benchmarks
-	python -m ruff format --check benched benchmarks
+	python -m ruff check benched benchmarks scripts
+	python -m ruff format --check benched benchmarks scripts
 
 lint-js:  ## run js linter
 	cd js; pnpm lint
 
 lint-docs:  ## lint docs with mdformat and codespell
-	python -m mdformat --check README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
-	python -m codespell_lib README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
+	python -m mdformat --check README.md docs/how-to
+	python -m codespell_lib README.md docs/index.rst docs/how-to
 
 lint: lint-js lint-py lint-docs  ## run project linters
 
@@ -55,15 +55,15 @@ lints: lint
 
 .PHONY: fix-py fix-js fix-docs fix format
 fix-py:  ## fix python formatting with ruff
-	python -m ruff check --fix benched benchmarks
-	python -m ruff format benched benchmarks
+	python -m ruff check --fix benched benchmarks scripts
+	python -m ruff format benched benchmarks scripts
 
 fix-js:  ## fix js formatting
 	cd js; pnpm fix
 
 fix-docs:  ## autoformat docs with mdformat and codespell
-	python -m mdformat README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
-	python -m codespell_lib --write README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
+	python -m mdformat README.md docs/how-to
+	python -m codespell_lib --write README.md docs/index.rst docs/how-to
 
 fix: fix-js fix-py fix-docs  ## run project autoformatters
 
@@ -115,6 +115,10 @@ coverage: coverage-py coverage-js  ## run all tests and collect test coverage
 # alias
 tests: test
 
+.PHONY: docs
+docs:  ## build Benched's Sphinx documentation with warnings as errors
+	python -m sphinx -W -b html docs build/docs
+
 .PHONY: demo demo-backfill demo-serve
 demo:  ## record two self-benchmark runs and build a local report
 	python -m benched run --quick benchmarks
@@ -152,7 +156,7 @@ major:  ## bump a major version
 ########
 # DIST #
 ########
-.PHONY: dist-py dist-js dist-check dist publish
+.PHONY: dist-py dist-js dist-check test-dist dist publish
 
 dist-py:  ## build python dists
 	python -m build -w -s
@@ -162,6 +166,9 @@ dist-js:  # build js dists
 
 dist-check:  ## run python dist checker with twine
 	python -m twine check dist/*
+
+test-dist:  ## exercise installed wheel and sdist CLI, report, assets, and Sphinx
+	python scripts/smoke_distribution.py dist/*.whl dist/*.tar.gz
 
 dist: clean build dist-js dist-py dist-check  ## build all dists
 

@@ -27,6 +27,8 @@ TIME_STATS = {
 DEMO_MACHINES = (
     ("demo-linux-x86", "Linux", "x86_64", 16.0, 1.18),
     ("demo-linux-arm", "Linux", "arm64", 8.0, 0.88),
+    ("demo-macos-arm", "Darwin", "arm64", 32.0, 0.78),
+    ("demo-windows-x86", "Windows", "AMD64", 24.0, 1.32),
 )
 
 

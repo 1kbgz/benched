@@ -63,7 +63,7 @@ reporters.
 Benched benchmarks its report compiler, history queries, and pytest-benchmark adapter
 with ordinary parameterized pytest-benchmark tests in `benchmarks/`. After installing
 development dependencies, use one current measurement as the structural seed for 30
-days of deterministic synthetic history across three machines, three Python feature
+days of deterministic synthetic history across five machines, three Python feature
 versions, and several half-GiB memory buckets. Synthetic benchmark medians are
 normalized to roughly two to four seconds before applying machine, Python, and
 random-walk factors:

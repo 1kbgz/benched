@@ -9,6 +9,7 @@ from benched.model import load_run
 from benched.storage import save_run
 
 FIXTURES = Path(__file__).with_name("fixtures")
+PROJECT_ROOT = Path(__file__).parents[2]
 
 
 def _configuration(source: Path) -> None:
@@ -121,3 +122,21 @@ def setup(app):
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["benchmarks"][0]["name"] == "Published benchmark"
     assert report["warnings"] == ["Prepared for trend"]
+
+
+def test_project_documentation_builds_with_embedded_report(tmp_path):
+    output = tmp_path / "html"
+
+    assert build_main(["-W", "-b", "html", str(PROJECT_ROOT / "docs"), str(output)]) == 0
+
+    home = output.joinpath("index.html").read_text(encoding="utf-8")
+    assert "<benched-report " in home
+    assert 'view="trend" metric="median" x-axis="version"' in home
+    assert output.joinpath("how-to/customize-sphinx-report.html").is_file()
+    assert output.joinpath("how-to/import-pytest-benchmark.html").is_file()
+    assert output.joinpath("how-to/migrate-from-asv.html").is_file()
+    assert output.joinpath("how-to/run-in-prepared-environments.html").is_file()
+    assert output.joinpath("how-to/validate-release.html").is_file()
+    assert output.joinpath("_static/benched/benched.js").is_file()
+    assert output.joinpath("_static/benched/benched.css").is_file()
+    assert len(list(output.glob("_static/benched/reports/canonical-report-v1-*.json"))) == 1
