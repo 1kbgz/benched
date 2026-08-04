@@ -96,6 +96,7 @@ test.describe("Benched report", () => {
     }
     await select(page, ".benched-view-select", "trend");
     await expect(report.locator(".benched-chart canvas").first()).toBeVisible();
+    await expect(report.locator('a[href*="tradingview.com"]')).toHaveCount(0);
     await expect(report.locator(".benched-chart-legend span")).toHaveCount(2);
     await expect(report.locator(".benched-chart-legend")).toContainText(
       "linux · Python 3.12 · 16 GiB",

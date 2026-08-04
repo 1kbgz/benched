@@ -855,6 +855,7 @@ export class BenchedReport extends HTMLElement {
       autoSize: true,
       height: 480,
       layout: {
+        attributionLogo: false,
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: style.color,
       },

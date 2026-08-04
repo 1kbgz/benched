@@ -1,7 +1,37 @@
-# How to customize a Benched report in Sphinx
+# How to embed and customize a Benched report in Sphinx
 
-This guide shows you how to transform benchmark report data during a Sphinx build
-before Benched writes the static JSON artifact.
+This guide shows you how to include a Benched report inline and transform its data
+during a Sphinx build.
+
+## Embed a report inline
+
+Add the directive where you want the report to appear in a reStructuredText page:
+
+```rst
+.. benched:: ../benchmark-results
+   :view: trend
+   :metric: median
+   :x-axis: version
+```
+
+Use the same directive in a MyST Markdown page:
+
+````markdown
+```{benched} ../benchmark-results
+:view: trend
+:metric: median
+:x-axis: version
+```
+````
+
+Both forms render the interactive report directly in the page. This documentation's
+generated example data is embedded below:
+
+```{benched} ../../build/docs-results
+:view: trend
+:metric: median
+:x-axis: version
+```
 
 ## Connect a report transformer
 
@@ -29,16 +59,6 @@ def setup(app):
 The callback receives the compiled `Report` and current directive options. Return a
 `Report`, a report dictionary, or `None` to keep the original. Benched validates a
 replacement against the report model before writing it.
-
-## Add the directive
-
-Use the directive normally:
-
-```rst
-.. benched:: ../benchmark-results
-   :view: trend
-   :metric: median
-```
 
 The event runs after Benched loads report JSON or compiles stored runs and before it
 writes `_static/benched/reports/*.json`. Benchmark execution is never part of the

@@ -138,10 +138,13 @@ def test_project_documentation_builds_with_embedded_report(tmp_path, monkeypatch
 
     yardang_build(output=str(output))
 
-    docs_page = output.joinpath("docs/overview.html").read_text(encoding="utf-8")
-    assert "<benched-report " in docs_page
-    assert 'view="trend" metric="median" x-axis="version"' in docs_page
-    assert output.joinpath("docs/how-to/customize-sphinx-report.html").is_file()
+    example_page = output.joinpath("docs/overview.html").read_text(encoding="utf-8")
+    assert "Benched report example" in example_page
+    assert "<benched-report " in example_page
+    assert 'view="trend" metric="median" x-axis="version"' in example_page
+    customize_page = output.joinpath("docs/how-to/customize-sphinx-report.html").read_text(encoding="utf-8")
+    assert "<benched-report " in customize_page
+    assert 'view="trend" metric="median" x-axis="version"' in customize_page
     assert output.joinpath("docs/how-to/import-pytest-benchmark.html").is_file()
     assert output.joinpath("docs/how-to/migrate-from-asv.html").is_file()
     assert output.joinpath("docs/how-to/run-in-prepared-environments.html").is_file()
