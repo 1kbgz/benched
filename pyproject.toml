@@ -33,7 +33,7 @@ dependencies = [
     "fsspec>=2024.6",
     "pluggy>=1.5,<2",
     "pytest>=8.1",
-    "pytest-benchmark>=5.2,<6",
+    "pytest-benchmark>=5.2.3,<6",
 ]
 
 [project.optional-dependencies]
