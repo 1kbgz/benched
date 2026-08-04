@@ -26,14 +26,3 @@ updates:
     labels:
       - "lang: javascript"
       - "part: dependencies"
-
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    cooldown:
-      default-days: 7
-    labels:
-      - "lang: rust"
-      - "part: dependencies"
-

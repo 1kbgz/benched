@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "run_id": "run-001",
+  "started_at": "2026-08-03T22:15:00+00:00",
+  "ended_at": "2026-08-03T22:15:02+00:00",
+  "status": "success",
+  "exit_code": 0,
+  "suite": {
+    "name": "example-benchmarks",
+    "repository": "https://example.test/example-benchmarks",
+    "version": "0.1.0",
+    "revision": "abc123",
+    "branch": "main",
+    "dirty": false,
+    "labels": {}
+  },
+  "subject": {
+    "name": "example",
+    "repository": "https://example.test/example",
+    "version": "1.2.3",
+    "revision": "def456",
+    "branch": null,
+    "dirty": null,
+    "labels": { "compiler": "default" }
+  },
+  "machine": {
+    "id": "ci",
+    "fingerprint": "machine-fingerprint",
+    "metadata": { "system": "Linux", "cpu_count": 2 },
+    "labels": {}
+  },
+  "environment": {
+    "fingerprint": "environment-fingerprint",
+    "python_implementation": "CPython",
+    "python_version": "3.11.9",
+    "platform": "Linux",
+    "architecture": "x86_64",
+    "labels": {}
+  },
+  "tool": {
+    "benched": "0.1.0",
+    "pytest": "8.4.1",
+    "pytest_benchmark": "5.2.3"
+  },
+  "measurements": [
+    {
+      "benchmark_id": "tests/test_parse.py::test_parse|size=100",
+      "nodeid": "tests/test_parse.py::test_parse[100]",
+      "name": "test_parse[100]",
+      "group": "parse",
+      "parameter_id": "100",
+      "parameters": { "size": 100 },
+      "unit": "seconds",
+      "options": { "min_rounds": 5 },
+      "extra_info": {},
+      "stats": {
+        "min": 0.0001,
+        "max": 0.0002,
+        "mean": 0.00013,
+        "median": 0.00012,
+        "rounds": 10,
+        "iterations": 100
+      },
+      "samples": null
+    }
+  ],
+  "provenance": {
+    "source_format": "benched",
+    "source_file": null,
+    "source_checksum": null,
+    "warnings": []
+  }
+}

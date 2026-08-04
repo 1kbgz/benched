@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-03T22:20:00+00:00",
+  "source_run_ids": ["run-001", "run-002", "run-003"],
+  "runs": [
+    {
+      "run_id": "run-001",
+      "started_at": "2026-08-01T12:00:00+00:00",
+      "status": "success",
+      "suite": { "name": "example-benchmarks", "revision": "aaa111" },
+      "subject": {
+        "name": "example",
+        "version": "1.2.3",
+        "revision": "111aaa"
+      },
+      "machine": { "id": "linux", "metadata": { "memory_gib": 16 } },
+      "environment": { "python_version": "3.12.9" }
+    },
+    {
+      "run_id": "run-002",
+      "started_at": "2026-08-02T12:00:00+00:00",
+      "status": "success",
+      "suite": { "name": "example-benchmarks", "revision": "bbb222" },
+      "subject": {
+        "name": "example",
+        "version": "1.2.4",
+        "revision": "222bbb"
+      },
+      "machine": { "id": "linux", "metadata": { "memory_gib": 16 } },
+      "environment": { "python_version": "3.12.1" }
+    },
+    {
+      "run_id": "run-003",
+      "started_at": "2026-08-03T12:00:00+00:00",
+      "status": "success",
+      "suite": { "name": "example-benchmarks", "revision": "ccc333" },
+      "subject": {
+        "name": "example",
+        "version": "1.2.4",
+        "revision": "333ccc"
+      },
+      "machine": { "id": "macos", "metadata": { "memory_gib": 32 } },
+      "environment": { "python_version": "3.13.0" }
+    }
+  ],
+  "benchmarks": [
+    {
+      "benchmark_id": "tests/test_parse.py::test_parse|size=100",
+      "nodeid": "tests/test_parse.py::test_parse[100]",
+      "name": "test_parse[100]",
+      "group": "parse",
+      "parameters": { "size": 100 },
+      "unit": "seconds",
+      "series": [
+        {
+          "run_id": "run-001",
+          "metrics": {
+            "median": 0.00012,
+            "mean": 0.00013,
+            "min": 0.0001,
+            "max": 0.0002,
+            "ops": 8333.33
+          }
+        },
+        {
+          "run_id": "run-002",
+          "metrics": {
+            "median": 0.0001,
+            "mean": 0.00011,
+            "min": 0.00009,
+            "max": 0.00018,
+            "ops": 10000
+          }
+        },
+        {
+          "run_id": "run-003",
+          "metrics": {
+            "median": 0.00009,
+            "mean": 0.0001,
+            "min": 0.00008,
+            "max": 0.00016,
+            "ops": 11111.11
+          }
+        }
+      ]
+    },
+    {
+      "benchmark_id": "tests/test_parse.py::test_parse|size=1000",
+      "nodeid": "tests/test_parse.py::test_parse[1000]",
+      "name": "test_parse[1000]",
+      "group": "parse",
+      "parameters": { "size": 1000 },
+      "unit": "seconds",
+      "series": [
+        {
+          "run_id": "run-001",
+          "metrics": {
+            "median": 0.0012,
+            "mean": 0.0013,
+            "min": 0.001,
+            "max": 0.002,
+            "ops": 833.33
+          }
+        },
+        {
+          "run_id": "run-002",
+          "metrics": {
+            "median": 0.001,
+            "mean": 0.0011,
+            "min": 0.0009,
+            "max": 0.0018,
+            "ops": 1000
+          }
+        }
+      ]
+    }
+  ],
+  "warnings": ["machine metadata differs across selected runs"]
+}

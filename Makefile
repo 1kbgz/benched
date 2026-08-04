@@ -1,18 +1,15 @@
 #########
 # BUILD #
 #########
-.PHONY: develop-py develop-js develop-rs develop
+.PHONY: develop-py develop-js develop
 develop-py:
 	uv pip install -e .[develop]
 
 develop-js: requirements-js
 
-develop-rs:
-	make -C rust develop
+develop: develop-js develop-py  ## setup project for development
 
-develop: develop-rs develop-js develop-py  ## setup project for development
-
-.PHONY: requirements-py requirements-js requirements-rs requirements
+.PHONY: requirements-py requirements-js requirements
 requirements-py:  ## install prerequisite python build requirements
 	python -m pip install --upgrade pip toml
 	python -m pip install `python -c 'import toml; c = toml.load("pyproject.toml"); print("\n".join(c["build-system"]["requires"]))'`
@@ -21,22 +18,16 @@ requirements-py:  ## install prerequisite python build requirements
 requirements-js:  ## install prerequisite javascript build requirements
 	cd js; pnpm install && npx playwright install
 
-requirements-rs:  ## install prerequisite rust build requirements
-	make -C rust requirements
+requirements: requirements-js requirements-py  ## setup project for development
 
-requirements: requirements-rs requirements-js requirements-py  ## setup project for development
-
-.PHONY: build-py build-js build-rs build
+.PHONY: build-py build-js build
 build-py:
 	python -m build -w -n
 
 build-js:
 	cd js; pnpm build
 
-build-rs:
-	make -C rust build
-
-build: build-rs build-js build-py  ## build the project
+build: build-js build-py  ## build the project
 
 .PHONY: install
 install:  ## install python library
@@ -45,42 +36,36 @@ install:  ## install python library
 #########
 # LINTS #
 #########
-.PHONY: lint-py lint-js lint-rs lint-docs lint lints
+.PHONY: lint-py lint-js lint-docs lint lints
 lint-py:  ## run python linter with ruff
-	python -m ruff check benched
-	python -m ruff format --check benched
+	python -m ruff check benched benchmarks
+	python -m ruff format --check benched benchmarks
 
 lint-js:  ## run js linter
 	cd js; pnpm lint
 
-lint-rs:  ## run rust linter
-	make -C rust lint
-
 lint-docs:  ## lint docs with mdformat and codespell
-	python -m mdformat --check README.md 
-	python -m codespell_lib README.md 
+	python -m mdformat --check README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
+	python -m codespell_lib README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
 
-lint: lint-rs lint-js lint-py lint-docs  ## run project linters
+lint: lint-js lint-py lint-docs  ## run project linters
 
 # alias
 lints: lint
 
-.PHONY: fix-py fix-js fix-rs fix-docs fix format
+.PHONY: fix-py fix-js fix-docs fix format
 fix-py:  ## fix python formatting with ruff
-	python -m ruff check --fix benched
-	python -m ruff format benched
+	python -m ruff check --fix benched benchmarks
+	python -m ruff format benched benchmarks
 
 fix-js:  ## fix js formatting
 	cd js; pnpm fix
 
-fix-rs:  ## fix rust formatting
-	make -C rust fix
-
 fix-docs:  ## autoformat docs with mdformat and codespell
-	python -m mdformat README.md 
-	python -m codespell_lib --write README.md 
+	python -m mdformat README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
+	python -m codespell_lib --write README.md docs/how-to/customize-sphinx-report.md docs/how-to/import-pytest-benchmark.md docs/how-to/migrate-from-asv.md docs/how-to/run-in-prepared-environments.md
 
-fix: fix-rs fix-js fix-py fix-docs  ## run project autoformatters
+fix: fix-js fix-py fix-docs  ## run project autoformatters
 
 # alias
 format: fix
@@ -123,22 +108,29 @@ tests-js: test-js
 
 coverage-js: test-js  ## run js tests and collect test coverage
 
-.PHONY: test-rs tests-rs coverage-rs
-test-rs:  ## run rust tests
-	make -C rust test
-
-# alias
-tests-rs: test-rs
-
-coverage-rs:  ## run rust tests and collect test coverage
-	make -C rust coverage
-
 .PHONY: test coverage tests
-test: test-py test-js test-rs  ## run all tests
-coverage: coverage-py coverage-js coverage-rs  ## run all tests and collect test coverage
+test: test-py test-js  ## run all tests
+coverage: coverage-py coverage-js  ## run all tests and collect test coverage
 
 # alias
 tests: test
+
+.PHONY: demo demo-backfill demo-serve
+demo:  ## record two self-benchmark runs and build a local report
+	python -m benched run --quick benchmarks
+	python -m benched run --quick benchmarks
+	python -m benched report --latest 2 --format terminal --format html --output build/demo
+	@echo 'Run `python -m benched serve build/demo --port 8000 --open` to view the report.'
+
+demo-backfill:  ## build a local report with 30 days of synthetic history
+	rm -rf build/demo-results build/demo-seed-results
+	python -m benched run --quick --results-dir build/demo-seed-results benchmarks
+	python -m benched.demo --results-dir build/demo-seed-results --output-dir build/demo-results --count 30
+	python -m benched report --results-dir build/demo-results --format terminal --format html --output build/demo
+	@echo 'Run `python -m benched serve build/demo --port 8000 --open` to view the report.'
+
+demo-serve: demo  ## build and open the local self-benchmark report
+	python -m benched serve build/demo --port 8000 --open
 
 ###########
 # VERSION #
@@ -160,24 +152,18 @@ major:  ## bump a major version
 ########
 # DIST #
 ########
-.PHONY: dist-py-wheel dist-py-sdist dist-rs dist-check dist publish
+.PHONY: dist-py dist-js dist-check dist publish
 
-dist-py-wheel:  ## build python wheel
-	python -m cibuildwheel --output-dir dist
-
-dist-py-sdist:  ## build python sdist
-	python -m build --sdist -o dist
+dist-py:  ## build python dists
+	python -m build -w -s
 
 dist-js:  # build js dists
 	cd js; pnpm pack
 
-dist-rs:  ## build rust dists
-	make -C rust dist
-
 dist-check:  ## run python dist checker with twine
 	python -m twine check dist/*
 
-dist: clean build dist-rs dist-js dist-py-wheel dist-py-sdist dist-check  ## build all dists
+dist: clean build dist-js dist-py dist-check  ## build all dists
 
 publish: dist  ## publish python assets
 

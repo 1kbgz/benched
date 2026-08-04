@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import hashlib
+import html
+import json
+import shlex
+from importlib import resources
+from pathlib import Path
+from typing import Any
+
+from docutils import nodes
+from docutils.parsers.rst import Directive, directives
+from sphinx.application import Sphinx
+from sphinx.util.osutil import relative_uri
+
+from .model import Report, load_report
+from .query import RunFilters, filter_runs, resolve_selector
+from .report import compile_report
+from .storage import read_runs
+
+_VIEWS = ("overview", "trend", "comparison")
+_METRICS = ("median", "mean", "min", "max", "ops")
+_X_AXES = ("version", "time")
+
+
+class BenchedReportNode(nodes.General, nodes.Element):
+    pass
+
+
+def _choice(values: tuple[str, ...]):
+    return lambda argument: directives.choice(argument, values)
+
+
+def _source_url(argument: str, source_directory: Path) -> str:
+    if "://" in argument or "::" in argument:
+        return argument
+    return str((source_directory / argument).resolve())
+
+
+def _compile_source(argument: str, source_directory: Path, options: dict[str, Any]) -> Report:
+    source_path = (source_directory / argument).resolve()
+    if source_path.is_file() or source_path.suffix == ".json":
+        return load_report(source_path)
+
+    filters = RunFilters(statuses=("success",), benchmark=options.get("benchmark"))
+    stored_runs = read_runs(_source_url(argument, source_directory))
+    selectors = shlex.split(options.get("selector", ""))
+    if selectors:
+        selected = [resolve_selector(stored_runs, selector, filters=filters).run for selector in selectors]
+        runs = tuple({run.run_id: run for run in selected}.values())
+    else:
+        runs = tuple(stored.run for stored in filter_runs(stored_runs, filters))
+    return compile_report(runs, filters=filters)
+
+
+def _write_report(app: Sphinx, report: Report, source_name: str) -> str:
+    payload = json.dumps(report.to_dict(), indent=2, ensure_ascii=True).encode() + b"\n"
+    digest = hashlib.sha256(payload).hexdigest()[:12]
+    stem = Path(source_name).stem or "report"
+    filename = f"{stem}-{digest}.json"
+    destination = Path(app.outdir) / "_static" / "benched" / "reports" / filename
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(payload)
+    return f"_static/benched/reports/{filename}"
+
+
+def _transform_report(app: Sphinx, report: Report, options: dict[str, Any]) -> Report:
+    transformed = app.emit_firstresult("benched-process-report", report, dict(options))
+    if transformed is None:
+        return report
+    if isinstance(transformed, Report):
+        return Report.from_dict(transformed.to_dict())
+    if isinstance(transformed, dict):
+        return Report.from_dict(transformed)
+    raise TypeError("benched-process-report must return benched.model.Report, a report dictionary, or None")
+
+
+class BenchedDirective(Directive):
+    required_arguments = 1
+    final_argument_whitespace = True
+    has_content = False
+    option_spec = {  # noqa: RUF012
+        "view": _choice(_VIEWS),
+        "metric": _choice(_METRICS),
+        "x-axis": _choice(_X_AXES),
+        "benchmark": directives.unchanged_required,
+        "machine": directives.unchanged_required,
+        "python": directives.unchanged_required,
+        "memory": directives.unchanged_required,
+        "selector": directives.unchanged_required,
+    }
+
+    def run(self) -> list[nodes.Node]:
+        environment = self.state.document.settings.env
+        source_directory = Path(self.state.document.current_source).parent
+        try:
+            report = _compile_source(self.arguments[0], source_directory, self.options)
+            report = _transform_report(environment.app, report, self.options)
+        except Exception as error:
+            raise self.error(f"cannot prepare Benched report: {error}") from error
+        node = BenchedReportNode()
+        node["docname"] = environment.docname
+        node["target"] = _write_report(environment.app, report, self.arguments[0])
+        node["view"] = self.options.get("view", "overview")
+        node["metric"] = self.options.get("metric", "median")
+        node["x_axis"] = self.options.get("x-axis", "version")
+        if benchmark := self.options.get("benchmark"):
+            node["benchmark"] = benchmark
+        for option in ("machine", "python", "memory"):
+            if value := self.options.get(option):
+                node[option] = value
+        return [node]
+
+
+def _visit_html(translator: Any, node: BenchedReportNode) -> None:
+    page = translator.builder.get_target_uri(node["docname"])
+    source = relative_uri(page, node["target"])
+    attributes = {
+        "src": source,
+        "view": node["view"],
+        "metric": node["metric"],
+        "x-axis": node["x_axis"],
+    }
+    if "benchmark" in node:
+        attributes["benchmark"] = node["benchmark"]
+    for option in ("machine", "python", "memory"):
+        if option in node:
+            attributes[option] = node[option]
+    rendered = " ".join(f'{name}="{html.escape(value, quote=True)}"' for name, value in attributes.items())
+    translator.body.append(f"<benched-report {rendered}></benched-report>")
+    raise nodes.SkipNode
+
+
+def _depart_html(translator: Any, node: BenchedReportNode) -> None:
+    pass
+
+
+def _copy_assets(app: Sphinx) -> None:
+    source = resources.files("benched").joinpath("extension")
+    destination = Path(app.outdir) / "_static" / "benched"
+    destination.mkdir(parents=True, exist_ok=True)
+    destination.joinpath("benched.js").write_bytes(source.joinpath("cdn/index.js").read_bytes())
+    destination.joinpath("benched.css").write_bytes(source.joinpath("css/index.css").read_bytes())
+
+
+def setup(app: Sphinx) -> dict[str, Any]:
+    app.add_event("benched-process-report")
+    app.add_node(BenchedReportNode, html=(_visit_html, _depart_html))
+    app.add_directive("benched", BenchedDirective)
+    app.add_css_file("benched/benched.css")
+    app.add_js_file("benched/benched.js", type="module")
+    app.connect("builder-inited", _copy_assets)
+    return {
+        "version": "0.1",
+        "parallel_read_safe": False,
+        "parallel_write_safe": True,
+    }

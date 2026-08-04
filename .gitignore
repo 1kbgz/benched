@@ -84,6 +84,9 @@ celerybeat.pid
 # Airspeed Velocity
 .asv
 
+# Benched
+.benched/
+
 # Environments
 .env
 .venv

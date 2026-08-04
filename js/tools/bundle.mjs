@@ -16,7 +16,6 @@ const COMMON_LOADER = {
     ".jsx": "jsx",
     ".png": "file",
     ".ttf": "file",
-    ".wasm": "file",
 };
 
 const DEFAULT_BUILD = {

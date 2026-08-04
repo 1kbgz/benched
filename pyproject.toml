@@ -2,7 +2,6 @@
 requires = [
     "hatchling",
     "hatch-js",
-    "hatch-rs",
 ]
 build-backend = "hatchling.build"
 
@@ -20,7 +19,6 @@ keywords = []
 
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Rust",
     "Programming Language :: Python",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
@@ -31,34 +29,47 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 
-dependencies = []
+dependencies = [
+    "fsspec>=2024.6",
+    "pluggy>=1.5,<2",
+    "pytest>=8.1",
+    "pytest-benchmark>=5.2,<6",
+]
 
 [project.optional-dependencies]
 develop = [
     "build",
     "bump-my-version",
     "check-dist",
-    "cibuildwheel",
     "codespell",
     "hatch-js",
-    "hatch-rs",
     "hatchling",
+    "jsonschema>=4.23",
     "mdformat",
     "mdformat-tables>=1",
     "pytest",
     "pytest-cov",
     "ruff",
+    "sphinx>=7",
     "twine",
     "ty",
     "uv",
     "wheel",
 ]
+sphinx = [
+    "sphinx>=7",
+]
 
 [project.scripts]
+benched = "benched.cli:main"
 
 [project.urls]
 Repository = "https://github.com/1kbgz/benched"
 Homepage = "https://github.com/1kbgz/benched"
+
+[tool.benched]
+benchmark_paths = ["benchmarks"]
+results_dir = ".benched/results"
 
 [tool.bumpversion]
 current_version = "0.1.0"
@@ -81,43 +92,6 @@ filename = "js/package.json"
 search = '"version": "{current_version}"'
 replace = '"version": "{new_version}"'
 
-[[tool.bumpversion.files]]
-filename = "js/Cargo.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{new_version}"'
-
-[[tool.bumpversion.files]]
-filename = "Cargo.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{new_version}"'
-
-[[tool.bumpversion.files]]
-filename = "rust/Cargo.toml"
-search = 'version = "{current_version}"'
-replace = 'version = "{new_version}"'
-
-[tool.cibuildwheel]
-build = "cp311-*"
-test-command = "pytest -vvv {project}/benched/tests"
-test-extras = "develop"
-
-[tool.cibuildwheel.linux]
-before-all = """
-curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y
-rustup target add aarch64-unknown-linux-gnu
-rustup target add x86_64-unknown-linux-gnu
-"""
-environment = {PATH="$HOME/.cargo/bin:$PATH", CARGO_TERM_COLOR="always", SKIP_HATCH_JS="1" }
-skip = "*i686* *musllinux*"
-
-[tool.cibuildwheel.macos]
-environment = {PATH="$HOME/.cargo/bin:$PATH", CARGO_TERM_COLOR="always", MACOS_DEPLOYMENT_TARGET=11.0}
-archs = "arm64"
-
-[tool.cibuildwheel.windows]
-environment = {PATH="$UserProfile\\.cargo\bin;$PATH", CARGO_TERM_COLOR="always"}
-skip = "*win32 *arm_64"
-
 [tool.coverage.run]
 branch = true
 omit = [
@@ -135,9 +109,6 @@ fail_under = 50
 
 [tool.hatch.build]
 artifacts = [
-    "benched/*.dll",
-    "benched/*.dylib",
-    "benched/*.so",
     "benched/extension",
 ]
 
@@ -152,29 +123,17 @@ targets = [
     "benched/extension/cdn/index.js",
 ]
 
-[tool.hatch.build.hooks.hatch-rs]
-verbose = true
-abi3 = true
-module = "benched"
-path = "."
-
 [tool.hatch.build.targets.sdist]
 packages = [
     "benched",
+    "benchmarks",
+    "docs",
     "js",
-    "rust",
-    "Cargo.toml",
-    "Cargo.lock",
 ]
 exclude = [
-    "benched/*.dll",
-    "benched/*.dylib",
-    "benched/*.so",
     "benched/extension",
     "js/dist",
     "js/node_modules",
-    "rust/Makefile",
-    "target",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -183,7 +142,6 @@ packages = [
 ]
 exclude = [
     "js",
-    "rust",
 ]
 
 [tool.pytest.ini_options]
@@ -224,6 +182,7 @@ section-order = [
 [tool.yardang]
 title = "benched"
 root = "README.md"
-pages = []
+pages = [
+    "docs/how-to/migrate-from-asv.md",
+]
 use-autoapi = true
-

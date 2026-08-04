@@ -1,0 +1,46 @@
+{
+  "machine_info": {
+    "node": "ci",
+    "machine": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.11.9",
+    "system": "Linux"
+  },
+  "commit_info": {
+    "id": "abc123",
+    "dirty": false,
+    "branch": "main"
+  },
+  "benchmarks": [
+    {
+      "group": "parse",
+      "name": "test_parse[100]",
+      "fullname": "tests/test_parse.py::test_parse[100]",
+      "params": { "size": 100 },
+      "param": "100",
+      "extra_info": {},
+      "options": {
+        "min_rounds": 5,
+        "max_time": 1.0,
+        "min_time": 0.000005,
+        "warmup": false
+      },
+      "stats": {
+        "min": 0.0001,
+        "max": 0.0002,
+        "mean": 0.00013,
+        "stddev": 0.00002,
+        "rounds": 10,
+        "median": 0.00012,
+        "iqr": 0.00001,
+        "q1": 0.00011,
+        "q3": 0.00013,
+        "ops": 7692.307,
+        "total": 0.0013,
+        "iterations": 100
+      }
+    }
+  ],
+  "datetime": "2026-08-03T22:15:00+00:00",
+  "version": "5.2.3"
+}

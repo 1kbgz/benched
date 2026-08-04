@@ -18,6 +18,8 @@ const BUNDLES = [
 ];
 
 async function build() {
+  fs.rmSync("dist", { recursive: true, force: true });
+
   // Bundle css
   await bundle_css();
 

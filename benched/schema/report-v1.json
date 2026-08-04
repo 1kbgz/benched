@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://1kbgz.github.io/benched/schema/report-v1.json",
+  "title": "Benched report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_run_ids",
+    "runs",
+    "benchmarks",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_run_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "runs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/run" }
+    },
+    "benchmarks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/benchmark" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "started_at",
+        "status",
+        "suite",
+        "subject",
+        "machine",
+        "environment"
+      ],
+      "properties": {
+        "run_id": { "type": "string", "minLength": 1 },
+        "started_at": { "type": "string", "format": "date-time" },
+        "status": { "enum": ["success", "failed", "interrupted"] },
+        "suite": { "type": "object" },
+        "subject": { "type": "object" },
+        "machine": { "type": "object" },
+        "environment": { "type": "object" }
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmark_id",
+        "nodeid",
+        "name",
+        "group",
+        "parameters",
+        "unit",
+        "series"
+      ],
+      "properties": {
+        "benchmark_id": { "type": "string", "minLength": 1 },
+        "nodeid": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "group": { "type": ["string", "null"] },
+        "parameters": { "type": "object" },
+        "unit": { "type": "string", "minLength": 1 },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["run_id", "metrics"],
+            "properties": {
+              "run_id": { "type": "string", "minLength": 1 },
+              "metrics": {
+                "type": "object",
+                "additionalProperties": { "type": ["number", "null"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

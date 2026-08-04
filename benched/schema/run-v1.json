@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://1kbgz.github.io/benched/schema/run-v1.json",
+  "title": "Benched run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "started_at",
+    "ended_at",
+    "status",
+    "exit_code",
+    "suite",
+    "subject",
+    "machine",
+    "environment",
+    "tool",
+    "measurements",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["success", "failed", "interrupted"] },
+    "exit_code": { "type": "integer" },
+    "suite": { "$ref": "#/$defs/identity" },
+    "subject": { "$ref": "#/$defs/identity" },
+    "machine": { "$ref": "#/$defs/machine" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "tool": { "$ref": "#/$defs/tool" },
+    "measurements": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/measurement" }
+    },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "labels": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "repository",
+        "version",
+        "revision",
+        "branch",
+        "dirty",
+        "labels"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "repository": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "revision": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "dirty": { "type": ["boolean", "null"] },
+        "labels": { "$ref": "#/$defs/labels" }
+      }
+    },
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "fingerprint", "metadata", "labels"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "fingerprint": { "type": "string", "minLength": 1 },
+        "metadata": { "type": "object" },
+        "labels": { "$ref": "#/$defs/labels" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fingerprint",
+        "python_implementation",
+        "python_version",
+        "platform",
+        "architecture",
+        "labels"
+      ],
+      "properties": {
+        "fingerprint": { "type": "string", "minLength": 1 },
+        "python_implementation": { "type": "string", "minLength": 1 },
+        "python_version": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "architecture": { "type": "string", "minLength": 1 },
+        "labels": { "$ref": "#/$defs/labels" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["benched", "pytest", "pytest_benchmark"],
+      "properties": {
+        "benched": { "type": "string", "minLength": 1 },
+        "pytest": { "type": "string", "minLength": 1 },
+        "pytest_benchmark": { "type": "string", "minLength": 1 }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "benchmark_id",
+        "nodeid",
+        "name",
+        "group",
+        "parameter_id",
+        "parameters",
+        "unit",
+        "options",
+        "extra_info",
+        "stats",
+        "samples"
+      ],
+      "properties": {
+        "benchmark_id": { "type": "string", "minLength": 1 },
+        "nodeid": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "group": { "type": ["string", "null"] },
+        "parameter_id": { "type": ["string", "null"] },
+        "parameters": { "type": "object" },
+        "unit": { "type": "string", "minLength": 1 },
+        "options": { "type": "object" },
+        "extra_info": { "type": "object" },
+        "stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["number", "integer", "string", "null"]
+          }
+        },
+        "samples": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "type": "number" } }
+          ]
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_format", "source_file", "warnings"],
+      "properties": {
+        "source_format": { "type": "string", "minLength": 1 },
+        "source_file": { "type": ["string", "null"] },
+        "source_checksum": { "type": ["string", "null"] },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
