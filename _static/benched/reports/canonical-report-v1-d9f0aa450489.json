@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-03T22:20:00+00:00",
+  "source_run_ids": [
+    "run-001"
+  ],
+  "runs": [
+    {
+      "run_id": "run-001",
+      "started_at": "2026-08-03T22:15:00+00:00",
+      "status": "success",
+      "suite": {
+        "name": "example-benchmarks",
+        "revision": "abc123"
+      },
+      "subject": {
+        "name": "example",
+        "version": "1.2.3"
+      },
+      "machine": {
+        "id": "ci",
+        "metadata": {
+          "memory_gib": 16.0
+        }
+      },
+      "environment": {
+        "python_version": "3.11.9"
+      }
+    }
+  ],
+  "benchmarks": [
+    {
+      "benchmark_id": "tests/test_parse.py::test_parse|size=100",
+      "nodeid": "tests/test_parse.py::test_parse[100]",
+      "name": "test_parse[100]",
+      "group": "parse",
+      "parameters": {
+        "size": 100
+      },
+      "unit": "seconds",
+      "series": [
+        {
+          "run_id": "run-001",
+          "metrics": {
+            "median": 0.00012,
+            "mean": 0.00013
+          }
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

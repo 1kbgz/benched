@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>How to customize a Benched report in Sphinx &#8212; Benched documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/benched/benched.css?v=847c4690" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script type="module" src="../_static/benched/benched.js?v=46255ef4"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to validate a Benched release" href="validate-release.html" />
+    <link rel="prev" title="How to migrate ASV history to Benched" href="migrate-from-asv.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="how-to-customize-a-benched-report-in-sphinx">
+<h1>How to customize a Benched report in Sphinx<a class="headerlink" href="#how-to-customize-a-benched-report-in-sphinx" title="Link to this heading">¶</a></h1>
+<p>This guide shows you how to transform benchmark report data during a Sphinx build
+before Benched writes the static JSON artifact.</p>
+<section id="connect-a-report-transformer">
+<h2>Connect a report transformer<a class="headerlink" href="#connect-a-report-transformer" title="Link to this heading">¶</a></h2>
+<p>Add a callback and Sphinx <code class="docutils literal notranslate"><span class="pre">setup</span></code> function to <code class="docutils literal notranslate"><span class="pre">conf.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">benched.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Report</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">customize_benchmarks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="n">Report</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="n">data</span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">benchmark</span>
+        <span class="k">for</span> <span class="n">benchmark</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">benchmark</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;internal_&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">data</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Internal benchmarks are hidden in this documentation.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;benched-process-report&quot;</span><span class="p">,</span> <span class="n">customize_benchmarks</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The callback receives the compiled <code class="docutils literal notranslate"><span class="pre">Report</span></code> and current directive options. Return a
+<code class="docutils literal notranslate"><span class="pre">Report</span></code>, a report dictionary, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to keep the original. Benched validates a
+replacement against the report model before writing it.</p>
+</section>
+<section id="add-the-directive">
+<h2>Add the directive<a class="headerlink" href="#add-the-directive" title="Link to this heading">¶</a></h2>
+<p>Use the directive normally:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+   <span class="nc">:view:</span> trend
+   <span class="nc">:metric:</span> median
+</pre></div>
+</div>
+<p>The event runs after Benched loads report JSON or compiles stored runs and before it
+writes <code class="docutils literal notranslate"><span class="pre">_static/benched/reports/*.json</span></code>. Benchmark execution is never part of the
+Sphinx build.</p>
+</section>
+<section id="apply-options-conditionally">
+<h2>Apply options conditionally<a class="headerlink" href="#apply-options-conditionally" title="Link to this heading">¶</a></h2>
+<p>Use the options argument when different directives need different presentation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">customize_benchmarks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">report</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;overview&quot;</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Overview values are documentation-specific.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span>
+</pre></div>
+</div>
+<p>Only the first event listener that returns a non-<code class="docutils literal notranslate"><span class="pre">None</span></code> value supplies the replacement
+report. Keep shared transformations in one callback when several adjustments must be
+composed.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Benched</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">How-to guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="run-in-prepared-environments.html">Run benchmarks in prepared environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="import-pytest-benchmark.html">How to import pytest-benchmark history</a></li>
+<li class="toctree-l1"><a class="reference internal" href="migrate-from-asv.html">How to migrate ASV history to Benched</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">How to customize a Benched report in Sphinx</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#connect-a-report-transformer">Connect a report transformer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#add-the-directive">Add the directive</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#apply-options-conditionally">Apply options conditionally</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="validate-release.html">How to validate a Benched release</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="migrate-from-asv.html" title="previous chapter">How to migrate ASV history to Benched</a></li>
+      <li>Next: <a href="validate-release.html" title="next chapter">How to validate a Benched release</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, the Benched authors.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/how-to/customize-sphinx-report.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
