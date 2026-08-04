@@ -85,6 +85,8 @@ def test_backfills_separate_demo_store_with_realistic_seconds(tmp_path):
 
     assert len(locations) == len(runs) == 30
     assert {run.provenance.source_format for run in runs} == {"benched-demo"}
-    medians = [measurement.stats["median"] for run in runs for measurement in run.measurements]
-    assert min(medians) > 1.0
-    assert max(medians) < 6.0
+    for run in runs:
+        for measurement in run.measurements:
+            median = measurement.stats["median"]
+            assert isinstance(median, (int, float))
+            assert 1.0 < median < 6.0

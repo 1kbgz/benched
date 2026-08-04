@@ -4,9 +4,11 @@ from dataclasses import replace
 from pathlib import Path
 
 from sphinx.cmd.build import build_main
+from yardang.cli import build as yardang_build
 
+from benched.demo import backfill_demo
 from benched.model import load_run
-from benched.storage import save_run
+from benched.storage import read_runs, save_run
 
 FIXTURES = Path(__file__).with_name("fixtures")
 PROJECT_ROOT = Path(__file__).parents[2]
@@ -124,19 +126,36 @@ def setup(app):
     assert report["warnings"] == ["Prepared for trend"]
 
 
-def test_project_documentation_builds_with_embedded_report(tmp_path):
+def test_project_documentation_builds_with_embedded_report(tmp_path, monkeypatch):
     output = tmp_path / "html"
+    seed = PROJECT_ROOT / "build" / "docs-seed-results"
+    results = PROJECT_ROOT / "build" / "docs-results"
+    shutil.rmtree(seed, ignore_errors=True)
+    shutil.rmtree(results, ignore_errors=True)
+    save_run(str(seed), load_run(FIXTURES / "canonical-run-v1.json"))
+    backfill_demo(str(seed), output_dir=str(results), count=3, seed=7)
+    monkeypatch.chdir(PROJECT_ROOT)
 
-    assert build_main(["-W", "-b", "html", str(PROJECT_ROOT / "docs"), str(output)]) == 0
+    yardang_build(output=str(output))
 
-    home = output.joinpath("index.html").read_text(encoding="utf-8")
-    assert "<benched-report " in home
-    assert 'view="trend" metric="median" x-axis="version"' in home
-    assert output.joinpath("how-to/customize-sphinx-report.html").is_file()
-    assert output.joinpath("how-to/import-pytest-benchmark.html").is_file()
-    assert output.joinpath("how-to/migrate-from-asv.html").is_file()
-    assert output.joinpath("how-to/run-in-prepared-environments.html").is_file()
-    assert output.joinpath("how-to/validate-release.html").is_file()
+    docs_page = output.joinpath("docs/overview.html").read_text(encoding="utf-8")
+    assert "<benched-report " in docs_page
+    assert 'view="trend" metric="median" x-axis="version"' in docs_page
+    assert output.joinpath("docs/how-to/customize-sphinx-report.html").is_file()
+    assert output.joinpath("docs/how-to/import-pytest-benchmark.html").is_file()
+    assert output.joinpath("docs/how-to/migrate-from-asv.html").is_file()
+    assert output.joinpath("docs/how-to/run-in-prepared-environments.html").is_file()
+    assert output.joinpath("docs/how-to/validate-release.html").is_file()
     assert output.joinpath("_static/benched/benched.js").is_file()
     assert output.joinpath("_static/benched/benched.css").is_file()
-    assert len(list(output.glob("_static/benched/reports/canonical-report-v1-*.json"))) == 1
+    report_path = next(output.glob("_static/benched/reports/docs-results-*.json"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(report["source_run_ids"]) == len(read_runs(str(results))) == 60
+    assert {run["machine"]["id"] for run in report["runs"]} == {
+        "ci",
+        "demo-linux-arm",
+        "demo-linux-x86",
+        "demo-macos-arm",
+        "demo-windows-x86",
+    }
+    assert {run["environment"]["python_version"] for run in report["runs"]} == {"3.10.0", "3.11.9", "3.12.0"}
