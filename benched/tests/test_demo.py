@@ -24,21 +24,31 @@ def test_backfills_deterministic_synthetic_history(tmp_path):
     locations = backfill_demo(results_dir, count=3, seed=7)
     runs = [stored.run for stored in read_runs(results_dir)]
 
-    assert len(locations) == 35
-    assert len(runs) == 36
+    assert len(locations) == 59
+    assert len(runs) == 60
     assert current in runs
     synthetic = [run for run in runs if run.run_id != current.run_id]
     assert {run.provenance.source_format for run in synthetic} == {"benched-demo"}
     assert {run.subject.labels["synthetic"] for run in synthetic} == {"true"}
-    assert {run.machine.id for run in runs} == {current.machine.id, "demo-linux-arm", "demo-linux-x86"}
+    assert {run.machine.id for run in runs} == {
+        current.machine.id,
+        "demo-linux-arm",
+        "demo-linux-x86",
+        "demo-macos-arm",
+        "demo-windows-x86",
+    }
     assert {machine: sum(run.machine.id == machine for run in runs) for machine in {run.machine.id for run in runs}} == {
         current.machine.id: 12,
         "demo-linux-arm": 12,
         "demo-linux-x86": 12,
+        "demo-macos-arm": 12,
+        "demo-windows-x86": 12,
     }
     assert {run.environment.python_version for run in runs} == {"3.10.0", "3.11.9", "3.12.0"}
     assert {run.machine.metadata.get("memory_gib") for run in runs if run.machine.id == "demo-linux-arm"} == {8.0}
     assert {run.machine.metadata.get("memory_gib") for run in runs if run.machine.id == "demo-linux-x86"} == {16.0}
+    assert {run.machine.metadata.get("memory_gib") for run in runs if run.machine.id == "demo-macos-arm"} == {32.0}
+    assert {run.machine.metadata.get("memory_gib") for run in runs if run.machine.id == "demo-windows-x86"} == {24.0}
     assert len({run.subject.version for run in runs}) == 4
     assert all(run.machine.labels["synthetic"] == "true" for run in synthetic if run.machine.id.startswith("demo-"))
     for run in synthetic:
@@ -73,7 +83,7 @@ def test_backfills_separate_demo_store_with_realistic_seconds(tmp_path):
     locations = backfill_demo(source_dir, output_dir=output_dir, count=1, seed=7)
     runs = [stored.run for stored in read_runs(output_dir)]
 
-    assert len(locations) == len(runs) == 18
+    assert len(locations) == len(runs) == 30
     assert {run.provenance.source_format for run in runs} == {"benched-demo"}
     medians = [measurement.stats["median"] for run in runs for measurement in run.measurements]
     assert min(medians) > 1.0
