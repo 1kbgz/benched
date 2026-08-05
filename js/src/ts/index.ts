@@ -16,6 +16,15 @@ type Metric = "median" | "mean" | "min" | "max" | "ops";
 type Theme = "light" | "dark";
 type View = "overview" | "trend" | "comparison";
 type XAxis = "version" | "time";
+type Control =
+  | "view"
+  | "metric"
+  | "x-axis"
+  | "benchmark"
+  | "machine"
+  | "python"
+  | "memory"
+  | "theme";
 
 interface ReportRun {
   run_id: string;
@@ -65,8 +74,18 @@ interface ValueElement extends HTMLElement {
 
 const METRICS: Metric[] = ["median", "mean", "min", "max", "ops"];
 const VIEWS: View[] = ["overview", "trend", "comparison"];
+const CONTROLS: Control[] = [
+  "view",
+  "metric",
+  "x-axis",
+  "benchmark",
+  "machine",
+  "python",
+  "memory",
+  "theme",
+];
 const SERIES_COLORS: Array<[string, string]> = [
-  ["--wa-color-blue-60", "#3e96ff"],
+  ["--_benched-accent-color", "#3e96ff"],
   ["--wa-color-orange-60", "#f46a45"],
   ["--wa-color-green-60", "#00ac49"],
   ["--wa-color-purple-60", "#b678f5"],
@@ -187,6 +206,7 @@ export class BenchedReport extends HTMLElement {
       "python",
       "memory",
       "x-axis",
+      "hide-controls",
       "data-theme",
     ];
   }
@@ -196,16 +216,21 @@ export class BenchedReport extends HTMLElement {
   private chartResizeObserver?: ResizeObserver;
   private request?: AbortController;
   private media?: MediaQueryList;
+  private themeObserver?: MutationObserver;
   private theme: Theme = "light";
 
   private readonly handleMediaChange = (event: MediaQueryListEvent) => {
-    if (!this.savedTheme() && !this.getAttribute("data-theme")) {
+    if (this.inheritsTheme()) {
+      this.setTheme(this.inheritedTheme());
+    } else if (!this.savedTheme() && !this.getAttribute("data-theme")) {
       this.setTheme(event.matches ? "dark" : "light");
     }
   };
 
   private readonly handleThemeChange = (event: Event) => {
-    this.setTheme((event as CustomEvent<Theme>).detail);
+    if (!this.inheritsTheme()) {
+      this.setTheme((event as CustomEvent<Theme>).detail);
+    }
   };
 
   connectedCallback() {
@@ -214,6 +239,7 @@ export class BenchedReport extends HTMLElement {
     this.applyTheme();
     this.media.addEventListener("change", this.handleMediaChange);
     window.addEventListener("benched-theme-change", this.handleThemeChange);
+    this.observeInheritedTheme();
     void this.load();
   }
 
@@ -222,6 +248,7 @@ export class BenchedReport extends HTMLElement {
     this.removeChart();
     this.media?.removeEventListener("change", this.handleMediaChange);
     window.removeEventListener("benched-theme-change", this.handleThemeChange);
+    this.themeObserver?.disconnect();
   }
 
   attributeChangedCallback(
@@ -233,7 +260,10 @@ export class BenchedReport extends HTMLElement {
     if (name === "src") {
       void this.load();
     } else if (name === "data-theme") {
-      this.setTheme(this.preferredTheme());
+      const theme = this.preferredTheme();
+      const changed = theme !== this.theme;
+      this.setTheme(theme);
+      if (!changed && this.report) this.render();
     } else if (this.report) {
       this.render();
     }
@@ -263,6 +293,17 @@ export class BenchedReport extends HTMLElement {
     return this.getAttribute("x-axis") === "time" ? "time" : "version";
   }
 
+  private get hiddenControls(): Set<Control> {
+    const values = this.getAttribute("hide-controls")?.split(",") ?? [];
+    return new Set(
+      values
+        .map((value) => value.trim())
+        .filter((value): value is Control =>
+          CONTROLS.includes(value as Control),
+        ),
+    );
+  }
+
   private savedTheme(): Theme | null {
     try {
       const value = localStorage.getItem("benched-theme");
@@ -275,7 +316,58 @@ export class BenchedReport extends HTMLElement {
   private preferredTheme(): Theme {
     const attribute = this.getAttribute("data-theme");
     if (attribute === "light" || attribute === "dark") return attribute;
+    if (attribute === "inherit") return this.inheritedTheme();
     return this.savedTheme() ?? (this.media?.matches ? "dark" : "light");
+  }
+
+  private inheritsTheme(): boolean {
+    return this.getAttribute("data-theme") === "inherit";
+  }
+
+  private inheritedTheme(): Theme {
+    const parent = this.parentElement ?? document.documentElement;
+    for (
+      let element: HTMLElement | null = parent;
+      element;
+      element = element.parentElement
+    ) {
+      const match = getComputedStyle(element).backgroundColor.match(
+        /^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:[, /]+\s*([\d.]+))?\s*\)$/,
+      );
+      if (!match || (match[4] !== undefined && Number(match[4]) === 0))
+        continue;
+      const brightness =
+        Number(match[1]) * 0.2126 +
+        Number(match[2]) * 0.7152 +
+        Number(match[3]) * 0.0722;
+      return brightness < 128 ? "dark" : "light";
+    }
+    const schemes = getComputedStyle(parent).colorScheme.split(/\s+/);
+    if (schemes[0] === "dark" || schemes[0] === "light") return schemes[0];
+    return this.media?.matches ? "dark" : "light";
+  }
+
+  private observeInheritedTheme() {
+    this.themeObserver?.disconnect();
+    this.themeObserver = new MutationObserver(() => {
+      if (!this.inheritsTheme()) return;
+      const theme = this.inheritedTheme();
+      if (theme === this.theme) {
+        if (this.report) this.render();
+      } else {
+        this.setTheme(theme);
+      }
+    });
+    for (
+      let element = this.parentElement;
+      element;
+      element = element.parentElement
+    ) {
+      this.themeObserver.observe(element, {
+        attributes: true,
+        attributeFilter: ["class", "style", "data-theme"],
+      });
+    }
   }
 
   private applyTheme() {
@@ -286,6 +378,10 @@ export class BenchedReport extends HTMLElement {
 
   private setTheme(theme: Theme) {
     if (theme !== "light" && theme !== "dark") return;
+    if (this.theme === theme) {
+      this.applyTheme();
+      return;
+    }
     this.theme = theme;
     this.applyTheme();
     if (this.report) this.render();
@@ -445,6 +541,7 @@ export class BenchedReport extends HTMLElement {
 
   private renderControls() {
     const report = this.report as Report;
+    const hidden = this.hiddenControls;
     const controls = this.querySelector<HTMLElement>(
       ".benched-controls",
     ) as HTMLElement;
@@ -586,15 +683,20 @@ export class BenchedReport extends HTMLElement {
         : this.removeAttribute("benchmark");
     });
     theme.addEventListener("click", () => this.toggleTheme());
-    controls.append(view);
-    if (this.view !== "overview") controls.append(metric);
-    if (this.view === "trend") controls.append(xAxis);
-    controls.append(benchmark, theme);
+    if (!hidden.has("view")) controls.append(view);
+    if (this.view !== "overview" && !hidden.has("metric"))
+      controls.append(metric);
+    if (this.view === "trend" && !hidden.has("x-axis")) controls.append(xAxis);
+    if (!hidden.has("benchmark")) controls.append(benchmark);
+    if (!hidden.has("theme") && !this.inheritsTheme()) controls.append(theme);
     const filters = document.createElement("div");
     filters.className = "benched-filter-panels";
-    filters.append(machine, python);
-    if (memoryValues.length > 0) filters.append(memory);
-    controls.append(filters);
+    if (!hidden.has("machine")) filters.append(machine);
+    if (!hidden.has("python")) filters.append(python);
+    if (memoryValues.length > 0 && !hidden.has("memory"))
+      filters.append(memory);
+    if (filters.childElementCount > 0) controls.append(filters);
+    if (controls.childElementCount === 0) controls.remove();
   }
 
   private renderWarnings() {
@@ -862,11 +964,11 @@ export class BenchedReport extends HTMLElement {
       grid: {
         vertLines: {
           color:
-            style.getPropertyValue("--benched-grid-color").trim() || "#d8dee9",
+            style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
         },
         horzLines: {
           color:
-            style.getPropertyValue("--benched-grid-color").trim() || "#d8dee9",
+            style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
         },
       },
       localization:

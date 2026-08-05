@@ -21,6 +21,8 @@ from .storage import read_runs
 _VIEWS = ("overview", "trend", "comparison")
 _METRICS = ("median", "mean", "min", "max", "ops")
 _X_AXES = ("version", "time")
+_THEMES = ("inherit", "light", "dark")
+_CONTROLS = ("view", "metric", "x-axis", "benchmark", "machine", "python", "memory", "theme")
 
 
 class BenchedReportNode(nodes.General, nodes.Element):
@@ -29,6 +31,14 @@ class BenchedReportNode(nodes.General, nodes.Element):
 
 def _choice(values: tuple[str, ...]):
     return lambda argument: directives.choice(argument, values)
+
+
+def _controls(argument: str) -> str:
+    values = tuple(value.strip() for value in argument.split(",") if value.strip())
+    invalid = tuple(value for value in values if value not in _CONTROLS)
+    if invalid:
+        raise ValueError(f"unknown Benched controls: {', '.join(invalid)}")
+    return ",".join(values)
 
 
 def _source_url(argument: str, source_directory: Path) -> str:
@@ -88,6 +98,8 @@ class BenchedDirective(Directive):
         "python": directives.unchanged_required,
         "memory": directives.unchanged_required,
         "selector": directives.unchanged_required,
+        "hide-controls": _controls,
+        "theme": _choice(_THEMES),
     }
 
     def run(self) -> list[nodes.Node]:
@@ -104,8 +116,11 @@ class BenchedDirective(Directive):
         node["view"] = self.options.get("view", "overview")
         node["metric"] = self.options.get("metric", "median")
         node["x_axis"] = self.options.get("x-axis", "version")
+        node["theme"] = self.options.get("theme", "inherit")
         if benchmark := self.options.get("benchmark"):
             node["benchmark"] = benchmark
+        if hide_controls := self.options.get("hide-controls"):
+            node["hide_controls"] = hide_controls
         for option in ("machine", "python", "memory"):
             if value := self.options.get(option):
                 node[option] = value
@@ -120,9 +135,12 @@ def _visit_html(translator: Any, node: BenchedReportNode) -> None:
         "view": node["view"],
         "metric": node["metric"],
         "x-axis": node["x_axis"],
+        "data-theme": node.get("theme", "inherit"),
     }
     if "benchmark" in node:
         attributes["benchmark"] = node["benchmark"]
+    if "hide_controls" in node:
+        attributes["hide-controls"] = node["hide_controls"]
     for option in ("machine", "python", "memory"):
         if option in node:
             attributes[option] = node[option]

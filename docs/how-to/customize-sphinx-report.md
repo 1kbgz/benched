@@ -25,12 +25,39 @@ Use the same directive in a MyST Markdown page:
 ````
 
 Both forms render the interactive report directly in the page. This documentation's
-generated example data is embedded below:
+generated example data is embedded below. Sphinx reports inherit the surrounding
+page's light or dark theme by default.
+
+## Keep an embedded report compact
+
+Preselect filters with directive options, then list controls that readers should not
+change in `:hide-controls:`:
+
+```rst
+.. benched:: ../benchmark-results
+   :view: trend
+   :metric: median
+   :x-axis: version
+   :benchmark: tests/test_parse.py::test_parse|size=100
+   :machine: linux,macos
+   :python: 3.11,3.12
+   :memory: 16,32
+   :hide-controls: view,metric,x-axis,benchmark,machine,python,memory
+```
+
+Hidden controls do not disable their selections. Use `:theme: light` or `:theme: dark` to override the surrounding page; the default is `inherit`.
+
+This live example preselects two machines, two Python versions, and two memory buckets
+while omitting their controls:
 
 ```{benched} ../../build/docs-results
 :view: trend
 :metric: median
 :x-axis: version
+:machine: demo-linux-x86,demo-macos-arm
+:python: 3.11,3.12
+:memory: 16,32
+:hide-controls: view,metric,x-axis,benchmark,machine,python,memory
 ```
 
 ## Connect a report transformer

@@ -184,6 +184,39 @@ test.describe("Benched report", () => {
     await expect(report.locator("thead")).toContainText("ops");
   });
 
+  test("applies hidden preselected controls", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      const compact = document.createElement("benched-report");
+      compact.setAttribute("src", "report.json");
+      compact.setAttribute("view", "trend");
+      compact.setAttribute("metric", "mean");
+      compact.setAttribute("x-axis", "time");
+      compact.setAttribute(
+        "benchmark",
+        "tests/test_parse.py::test_parse|size=100",
+      );
+      compact.setAttribute("machine", "linux");
+      compact.setAttribute("python", "3.12");
+      compact.setAttribute("memory", "16");
+      compact.setAttribute(
+        "hide-controls",
+        "view,metric,x-axis,benchmark,machine,python,memory,theme",
+      );
+      document.body.append(compact);
+    });
+
+    const report = page.locator("benched-report").nth(1);
+    await expect(report.locator(".benched-controls")).toHaveCount(0);
+    await expect(report.locator("h2")).toHaveText("test_parse[100]");
+    await expect(report.locator("thead")).toContainText("mean");
+    await expect(report.locator(".benched-chart")).toHaveAttribute(
+      "aria-label",
+      /by time$/,
+    );
+    await expect(report.locator(".benched-chart-legend span")).toHaveCount(1);
+  });
+
   test("links every overview benchmark to its trend", async ({ page }) => {
     await page.goto("/");
     const report = page.locator("benched-report");
@@ -287,6 +320,44 @@ test.describe("Benched report", () => {
     await expect(
       page.locator("benched-report").first().locator(".benched-summary-grid"),
     ).toBeVisible();
+  });
+
+  test("inherits and follows its host theme", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      localStorage.setItem("benched-theme", "light");
+      const host = document.createElement("section");
+      host.id = "themed-host";
+      host.style.colorScheme = "dark";
+      host.style.backgroundColor = "rgb(18, 24, 32)";
+      host.style.color = "rgb(230, 235, 242)";
+      const embedded = document.createElement("benched-report");
+      embedded.setAttribute("src", "report.json");
+      embedded.setAttribute("data-theme", "inherit");
+      host.append(embedded);
+      document.body.append(host);
+    });
+
+    const report = page.locator("#themed-host benched-report");
+    await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+    await expect(report.locator(".benched-theme-toggle")).toHaveCount(0);
+    expect(
+      await report.evaluate((element) => ({
+        background: getComputedStyle(element).backgroundColor,
+        color: getComputedStyle(element).color,
+      })),
+    ).toEqual({
+      background: "rgba(0, 0, 0, 0)",
+      color: "rgb(230, 235, 242)",
+    });
+
+    await page.locator("#themed-host").evaluate((host) => {
+      host.style.colorScheme = "light";
+      host.style.backgroundColor = "rgb(248, 250, 252)";
+      host.style.color = "rgb(22, 28, 36)";
+    });
+    await expect(report).toHaveAttribute("data-resolved-theme", "light");
+    await expect(report).toHaveCSS("color", "rgb(22, 28, 36)");
   });
 
   test("renders empty and fetch error states", async ({ page }) => {

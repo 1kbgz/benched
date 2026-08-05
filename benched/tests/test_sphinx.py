@@ -40,6 +40,8 @@ def test_sphinx_embeds_multiple_prepared_reports_with_relative_assets(tmp_path):
    :python: 3.11,3.12
    :memory: 16,32
    :benchmark: tests/test_parse.py::test_parse|size=100
+   :hide-controls: view,metric,x-axis,benchmark,machine,python,memory,theme
+   :theme: dark
 
 .. benched:: ../../report.json
    :view: overview
@@ -53,7 +55,10 @@ def test_sphinx_embeds_multiple_prepared_reports_with_relative_assets(tmp_path):
     reports = list(output.glob("_static/benched/reports/report-*.json"))
     assert page.count("<benched-report ") == 2
     assert 'view="trend" metric="mean" x-axis="time"' in page
+    assert 'data-theme="dark"' in page
+    assert 'hide-controls="view,metric,x-axis,benchmark,machine,python,memory,theme"' in page
     assert 'python="3.11,3.12" memory="16,32"' in page
+    assert 'data-theme="inherit"' in page
     assert 'src="../_static/benched/reports/report-' in page
     assert page.count("benched/benched.js") == 1
     assert len(reports) == 1
@@ -145,6 +150,8 @@ def test_project_documentation_builds_with_embedded_report(tmp_path, monkeypatch
     customize_page = output.joinpath("docs/how-to/customize-sphinx-report.html").read_text(encoding="utf-8")
     assert "<benched-report " in customize_page
     assert 'view="trend" metric="median" x-axis="version"' in customize_page
+    assert 'data-theme="inherit"' in customize_page
+    assert 'hide-controls="view,metric,x-axis,benchmark,machine,python,memory"' in customize_page
     assert output.joinpath("docs/how-to/import-pytest-benchmark.html").is_file()
     assert output.joinpath("docs/how-to/migrate-from-asv.html").is_file()
     assert output.joinpath("docs/how-to/run-in-prepared-environments.html").is_file()
