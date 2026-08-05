@@ -1,8 +1,9 @@
-# Benched documentation
+# Benched report example
 
-Benched records pytest-benchmark measurements in the active Python environment,
-keeps immutable history, compares saved runs, and generates static reports for
-standalone sites or existing documentation.
+This page embeds a Benched report directly in Sphinx. Benched records
+pytest-benchmark measurements in the active Python environment, keeps immutable
+history, compares saved runs, and generates static reports for standalone sites or
+existing documentation.
 
 ## Embedded report
 
