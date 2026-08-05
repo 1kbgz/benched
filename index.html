@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Benched documentation" href="docs/overview.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Benched report example" href="docs/overview.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>Benched v0.1.0</title>
@@ -13,7 +13,7 @@
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="_static/benched/benched.css?v=847c4690" />
+    <link rel="stylesheet" type="text/css" href="_static/benched/benched.css?v=647b8d54" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/custom.css?v=890fd012" />
@@ -198,11 +198,11 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul>
-<li class="toctree-l1"><a class="reference internal" href="docs/overview.html">Benched documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/overview.html">Benched report example</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/how-to/run-in-prepared-environments.html">Run benchmarks in prepared environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/how-to/import-pytest-benchmark.html">How to import pytest-benchmark history</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/how-to/migrate-from-asv.html">How to migrate ASV history to Benched</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/how-to/customize-sphinx-report.html">How to customize a Benched report in Sphinx</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/how-to/customize-sphinx-report.html">How to embed and customize a Benched report in Sphinx</a></li>
 </ul>
 
 </div>
@@ -387,7 +387,17 @@ once, then point each component at report JSON. Components maintain independent 
 metric, benchmark, machine, Python, and x-axis filters.</p>
 <div class="highlight-html notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;assets/benched.css&quot;</span><span class="p">&gt;</span>
 <span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;module&quot;</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;assets/benched.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
-<span class="p">&lt;</span><span class="nt">benched-report</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;data/report.json&quot;</span> <span class="na">view</span><span class="o">=</span><span class="s">&quot;trend&quot;</span> <span class="na">metric</span><span class="o">=</span><span class="s">&quot;median&quot;</span> <span class="na">x-axis</span><span class="o">=</span><span class="s">&quot;version&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">benched-report</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">benched-report</span>
+  <span class="na">src</span><span class="o">=</span><span class="s">&quot;data/report.json&quot;</span>
+  <span class="na">view</span><span class="o">=</span><span class="s">&quot;trend&quot;</span>
+  <span class="na">metric</span><span class="o">=</span><span class="s">&quot;median&quot;</span>
+  <span class="na">x-axis</span><span class="o">=</span><span class="s">&quot;version&quot;</span>
+  <span class="na">machine</span><span class="o">=</span><span class="s">&quot;linux,macos&quot;</span>
+  <span class="na">python</span><span class="o">=</span><span class="s">&quot;3.11,3.12&quot;</span>
+  <span class="na">memory</span><span class="o">=</span><span class="s">&quot;16,32&quot;</span>
+  <span class="na">hide-controls</span><span class="o">=</span><span class="s">&quot;view,metric,x-axis,machine,python,memory&quot;</span>
+  <span class="na">data-theme</span><span class="o">=</span><span class="s">&quot;inherit&quot;</span>
+<span class="p">&gt;&lt;/</span><span class="nt">benched-report</span><span class="p">&gt;</span>
 </pre></div>
 </div>
 <p>Machine, Python, and Memory use ASV-style toggle panels so multiple series can remain
@@ -395,15 +405,19 @@ selected. Exact Python runtimes are grouped by feature version (<code class="doc
 become <code class="docutils literal notranslate"><span class="pre">3.12</span></code>); memory is collected from the machine and rounded to the nearest 0.5
 GiB to avoid noisy VM metadata. Comma-separated <code class="docutils literal notranslate"><span class="pre">machine</span></code>, <code class="docutils literal notranslate"><span class="pre">python</span></code>, and <code class="docutils literal notranslate"><span class="pre">memory</span></code>
 attributes can set initial selections.</p>
+<p>Set <code class="docutils literal notranslate"><span class="pre">hide-controls</span></code> to a comma-separated combination of <code class="docutils literal notranslate"><span class="pre">view</span></code>, <code class="docutils literal notranslate"><span class="pre">metric</span></code>, <code class="docutils literal notranslate"><span class="pre">x-axis</span></code>,
+<code class="docutils literal notranslate"><span class="pre">benchmark</span></code>, <code class="docutils literal notranslate"><span class="pre">machine</span></code>, <code class="docutils literal notranslate"><span class="pre">python</span></code>, <code class="docutils literal notranslate"><span class="pre">memory</span></code>, and <code class="docutils literal notranslate"><span class="pre">theme</span></code>. Hidden controls keep their
+attribute selections active and can still be changed programmatically.</p>
 <p>The component supports three consolidated views: <code class="docutils literal notranslate"><span class="pre">overview</span></code> combines summary counts
 and a benchmark index, <code class="docutils literal notranslate"><span class="pre">trend</span></code> combines grouped charts and recent exact values, and
 <code class="docutils literal notranslate"><span class="pre">comparison</span></code> shows previous/latest values by machine and Python context. Overview
 benchmark links open their trend views. Trend charts use subject package version on
-the x-axis by default; set <code class="docutils literal notranslate"><span class="pre">x-axis=&quot;time&quot;</span></code> to use run time instead. Theme it through inherited
-text styles and the <code class="docutils literal notranslate"><span class="pre">--benched-accent-color</span></code> and <code class="docutils literal notranslate"><span class="pre">--benched-grid-color</span></code> CSS properties.
-Color mode follows the browser preference until the report’s top-right theme button
-stores a local light/dark override. Set <code class="docutils literal notranslate"><span class="pre">data-theme=&quot;light&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">data-theme=&quot;dark&quot;</span></code> on
-the component for an explicit initial mode.</p>
+the x-axis by default; set <code class="docutils literal notranslate"><span class="pre">x-axis=&quot;time&quot;</span></code> to use run time instead. Theme it through
+inherited text and background colors and the <code class="docutils literal notranslate"><span class="pre">--benched-accent-color</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--benched-grid-color</span></code> CSS properties. <code class="docutils literal notranslate"><span class="pre">data-theme=&quot;inherit&quot;</span></code> follows the surrounding
+page and omits the component theme button. Otherwise, color mode follows the browser
+preference until the report’s theme button stores a local override. Set
+<code class="docutils literal notranslate"><span class="pre">data-theme=&quot;light&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">data-theme=&quot;dark&quot;</span></code> for an explicit initial mode.</p>
 </section>
 <section id="sphinx-embedding">
 <h3>Sphinx embedding<a class="headerlink" href="#sphinx-embedding" title="Link to this heading">¶</a></h3>
@@ -421,11 +435,14 @@ never execute benchmarks.</p>
    <span class="nc">:x-axis:</span> version
    <span class="nc">:python:</span> 3.11,3.12
    <span class="nc">:memory:</span> 16,32
+   <span class="nc">:hide-controls:</span> view,metric,x-axis,benchmark,machine,python,memory
 </pre></div>
 </div>
 <p>For a results directory, omit <code class="docutils literal notranslate"><span class="pre">:selector:</span></code> to include all successful runs or provide
 space-separated selectors such as <code class="docutils literal notranslate"><span class="pre">:selector:</span> <span class="pre">previous</span> <span class="pre">latest</span></code>. JSON and packaged
 assets are copied beneath Sphinx’s <code class="docutils literal notranslate"><span class="pre">_static/benched</span></code> output with page-relative URLs.
+Sphinx embeds use <code class="docutils literal notranslate"><span class="pre">theme=&quot;inherit&quot;</span></code> by default; set <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code>
+to override the surrounding page.
 The <code class="docutils literal notranslate"><span class="pre">benched-process-report</span></code> event can return a validated replacement report before
 that JSON is written. See <a class="reference internal" href="docs/how-to/customize-sphinx-report.html"><span class="std std-doc">How to customize a Benched report in
 Sphinx</span></a>.</p>
@@ -454,7 +471,7 @@ Sphinx</span></a>.</p>
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Benched documentation</div>
+                <div class="title">Benched report example</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -489,7 +506,7 @@ Sphinx</span></a>.</p>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="_static/benched/benched.js?v=46255ef4"></script>
+    <script type="module" src="_static/benched/benched.js?v=c6f8777b"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script src="_static/js/custom.js?v=956e5d78"></script>
     </body>

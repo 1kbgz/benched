@@ -14777,8 +14777,18 @@ var qr = { ...e10, color: "#2196f3" };
 // src/ts/index.ts
 var METRICS = ["median", "mean", "min", "max", "ops"];
 var VIEWS = ["overview", "trend", "comparison"];
+var CONTROLS = [
+  "view",
+  "metric",
+  "x-axis",
+  "benchmark",
+  "machine",
+  "python",
+  "memory",
+  "theme"
+];
 var SERIES_COLORS = [
-  ["--wa-color-blue-60", "#3e96ff"],
+  ["--_benched-accent-color", "#3e96ff"],
   ["--wa-color-orange-60", "#f46a45"],
   ["--wa-color-green-60", "#00ac49"],
   ["--wa-color-purple-60", "#b678f5"],
@@ -14871,6 +14881,7 @@ var BenchedReport = class extends HTMLElement {
       "python",
       "memory",
       "x-axis",
+      "hide-controls",
       "data-theme"
     ];
   }
@@ -14879,14 +14890,19 @@ var BenchedReport = class extends HTMLElement {
   chartResizeObserver;
   request;
   media;
+  themeObserver;
   theme = "light";
   handleMediaChange = (event) => {
-    if (!this.savedTheme() && !this.getAttribute("data-theme")) {
+    if (this.inheritsTheme()) {
+      this.setTheme(this.inheritedTheme());
+    } else if (!this.savedTheme() && !this.getAttribute("data-theme")) {
       this.setTheme(event.matches ? "dark" : "light");
     }
   };
   handleThemeChange = (event) => {
-    this.setTheme(event.detail);
+    if (!this.inheritsTheme()) {
+      this.setTheme(event.detail);
+    }
   };
   connectedCallback() {
     this.media = matchMedia("(prefers-color-scheme: dark)");
@@ -14894,6 +14910,7 @@ var BenchedReport = class extends HTMLElement {
     this.applyTheme();
     this.media.addEventListener("change", this.handleMediaChange);
     window.addEventListener("benched-theme-change", this.handleThemeChange);
+    this.observeInheritedTheme();
     void this.load();
   }
   disconnectedCallback() {
@@ -14901,13 +14918,17 @@ var BenchedReport = class extends HTMLElement {
     this.removeChart();
     this.media?.removeEventListener("change", this.handleMediaChange);
     window.removeEventListener("benched-theme-change", this.handleThemeChange);
+    this.themeObserver?.disconnect();
   }
   attributeChangedCallback(name, previous, current) {
     if (!this.isConnected || previous === current) return;
     if (name === "src") {
       void this.load();
     } else if (name === "data-theme") {
-      this.setTheme(this.preferredTheme());
+      const theme = this.preferredTheme();
+      const changed = theme !== this.theme;
+      this.setTheme(theme);
+      if (!changed && this.report) this.render();
     } else if (this.report) {
       this.render();
     }
@@ -14931,6 +14952,14 @@ var BenchedReport = class extends HTMLElement {
   get xAxis() {
     return this.getAttribute("x-axis") === "time" ? "time" : "version";
   }
+  get hiddenControls() {
+    const values = this.getAttribute("hide-controls")?.split(",") ?? [];
+    return new Set(
+      values.map((value) => value.trim()).filter(
+        (value) => CONTROLS.includes(value)
+      )
+    );
+  }
   savedTheme() {
     try {
       const value = localStorage.getItem("benched-theme");
@@ -14942,7 +14971,44 @@ var BenchedReport = class extends HTMLElement {
   preferredTheme() {
     const attribute = this.getAttribute("data-theme");
     if (attribute === "light" || attribute === "dark") return attribute;
+    if (attribute === "inherit") return this.inheritedTheme();
     return this.savedTheme() ?? (this.media?.matches ? "dark" : "light");
+  }
+  inheritsTheme() {
+    return this.getAttribute("data-theme") === "inherit";
+  }
+  inheritedTheme() {
+    const parent = this.parentElement ?? document.documentElement;
+    for (let element = parent; element; element = element.parentElement) {
+      const match = getComputedStyle(element).backgroundColor.match(
+        /^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:[, /]+\s*([\d.]+))?\s*\)$/
+      );
+      if (!match || match[4] !== void 0 && Number(match[4]) === 0)
+        continue;
+      const brightness = Number(match[1]) * 0.2126 + Number(match[2]) * 0.7152 + Number(match[3]) * 0.0722;
+      return brightness < 128 ? "dark" : "light";
+    }
+    const schemes = getComputedStyle(parent).colorScheme.split(/\s+/);
+    if (schemes[0] === "dark" || schemes[0] === "light") return schemes[0];
+    return this.media?.matches ? "dark" : "light";
+  }
+  observeInheritedTheme() {
+    this.themeObserver?.disconnect();
+    this.themeObserver = new MutationObserver(() => {
+      if (!this.inheritsTheme()) return;
+      const theme = this.inheritedTheme();
+      if (theme === this.theme) {
+        if (this.report) this.render();
+      } else {
+        this.setTheme(theme);
+      }
+    });
+    for (let element = this.parentElement; element; element = element.parentElement) {
+      this.themeObserver.observe(element, {
+        attributes: true,
+        attributeFilter: ["class", "style", "data-theme"]
+      });
+    }
   }
   applyTheme() {
     this.classList.toggle("wa-dark", this.theme === "dark");
@@ -14951,6 +15017,10 @@ var BenchedReport = class extends HTMLElement {
   }
   setTheme(theme) {
     if (theme !== "light" && theme !== "dark") return;
+    if (this.theme === theme) {
+      this.applyTheme();
+      return;
+    }
     this.theme = theme;
     this.applyTheme();
     if (this.report) this.render();
@@ -15085,6 +15155,7 @@ var BenchedReport = class extends HTMLElement {
   }
   renderControls() {
     const report = this.report;
+    const hidden = this.hiddenControls;
     const controls = this.querySelector(
       ".benched-controls"
     );
@@ -15211,15 +15282,20 @@ var BenchedReport = class extends HTMLElement {
       selected ? this.setAttribute("benchmark", selected.benchmark_id) : this.removeAttribute("benchmark");
     });
     theme.addEventListener("click", () => this.toggleTheme());
-    controls.append(view);
-    if (this.view !== "overview") controls.append(metric);
-    if (this.view === "trend") controls.append(xAxis);
-    controls.append(benchmark, theme);
+    if (!hidden.has("view")) controls.append(view);
+    if (this.view !== "overview" && !hidden.has("metric"))
+      controls.append(metric);
+    if (this.view === "trend" && !hidden.has("x-axis")) controls.append(xAxis);
+    if (!hidden.has("benchmark")) controls.append(benchmark);
+    if (!hidden.has("theme") && !this.inheritsTheme()) controls.append(theme);
     const filters = document.createElement("div");
     filters.className = "benched-filter-panels";
-    filters.append(machine, python);
-    if (memoryValues.length > 0) filters.append(memory);
-    controls.append(filters);
+    if (!hidden.has("machine")) filters.append(machine);
+    if (!hidden.has("python")) filters.append(python);
+    if (memoryValues.length > 0 && !hidden.has("memory"))
+      filters.append(memory);
+    if (filters.childElementCount > 0) controls.append(filters);
+    if (controls.childElementCount === 0) controls.remove();
   }
   renderWarnings() {
     const report = this.report;
@@ -15439,15 +15515,16 @@ var BenchedReport = class extends HTMLElement {
       autoSize: true,
       height: 480,
       layout: {
+        attributionLogo: false,
         background: { type: $i.Solid, color: "transparent" },
         textColor: style.color
       },
       grid: {
         vertLines: {
-          color: style.getPropertyValue("--benched-grid-color").trim() || "#d8dee9"
+          color: style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9"
         },
         horzLines: {
-          color: style.getPropertyValue("--benched-grid-color").trim() || "#d8dee9"
+          color: style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9"
         }
       },
       localization: this.xAxis === "version" ? {

@@ -187,7 +187,17 @@ metric, benchmark, machine, Python, and x-axis filters.
 ```html
 <link rel="stylesheet" href="assets/benched.css">
 <script type="module" src="assets/benched.js"></script>
-<benched-report src="data/report.json" view="trend" metric="median" x-axis="version"></benched-report>
+<benched-report
+  src="data/report.json"
+  view="trend"
+  metric="median"
+  x-axis="version"
+  machine="linux,macos"
+  python="3.11,3.12"
+  memory="16,32"
+  hide-controls="view,metric,x-axis,machine,python,memory"
+  data-theme="inherit"
+></benched-report>
 ```
 
 Machine, Python, and Memory use ASV-style toggle panels so multiple series can remain
@@ -196,15 +206,20 @@ become `3.12`); memory is collected from the machine and rounded to the nearest 
 GiB to avoid noisy VM metadata. Comma-separated `machine`, `python`, and `memory`
 attributes can set initial selections.
 
+Set `hide-controls` to a comma-separated combination of `view`, `metric`, `x-axis`,
+`benchmark`, `machine`, `python`, `memory`, and `theme`. Hidden controls keep their
+attribute selections active and can still be changed programmatically.
+
 The component supports three consolidated views: `overview` combines summary counts
 and a benchmark index, `trend` combines grouped charts and recent exact values, and
 `comparison` shows previous/latest values by machine and Python context. Overview
 benchmark links open their trend views. Trend charts use subject package version on
-the x-axis by default; set `x-axis="time"` to use run time instead. Theme it through inherited
-text styles and the `--benched-accent-color` and `--benched-grid-color` CSS properties.
-Color mode follows the browser preference until the report's top-right theme button
-stores a local light/dark override. Set `data-theme="light"` or `data-theme="dark"` on
-the component for an explicit initial mode.
+the x-axis by default; set `x-axis="time"` to use run time instead. Theme it through
+inherited text and background colors and the `--benched-accent-color` and
+`--benched-grid-color` CSS properties. `data-theme="inherit"` follows the surrounding
+page and omits the component theme button. Otherwise, color mode follows the browser
+preference until the report's theme button stores a local override. Set
+`data-theme="light"` or `data-theme="dark"` for an explicit initial mode.
 
 ### Sphinx embedding
 
@@ -225,11 +240,14 @@ extensions = ["benched.sphinx"]
    :x-axis: version
    :python: 3.11,3.12
    :memory: 16,32
+   :hide-controls: view,metric,x-axis,benchmark,machine,python,memory
 ```
 
 For a results directory, omit `:selector:` to include all successful runs or provide
 space-separated selectors such as `:selector: previous latest`. JSON and packaged
 assets are copied beneath Sphinx's `_static/benched` output with page-relative URLs.
+Sphinx embeds use `theme="inherit"` by default; set `:theme: light` or `:theme: dark`
+to override the surrounding page.
 The `benched-process-report` event can return a validated replacement report before
 that JSON is written. See [How to customize a Benched report in
 Sphinx](docs/how-to/customize-sphinx-report.md).

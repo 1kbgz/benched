@@ -6,14 +6,14 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="How to migrate ASV history to Benched" href="migrate-from-asv.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>How to customize a Benched report in Sphinx - Benched v0.1.0</title>
+        <title>How to embed and customize a Benched report in Sphinx - Benched v0.1.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/benched/benched.css?v=847c4690" />
+    <link rel="stylesheet" type="text/css" href="../../_static/benched/benched.css?v=647b8d54" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=890fd012" />
@@ -198,11 +198,11 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../overview.html">Benched documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Benched report example</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run-in-prepared-environments.html">Run benchmarks in prepared environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="import-pytest-benchmark.html">How to import pytest-benchmark history</a></li>
 <li class="toctree-l1"><a class="reference internal" href="migrate-from-asv.html">How to migrate ASV history to Benched</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">How to customize a Benched report in Sphinx</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">How to embed and customize a Benched report in Sphinx</a></li>
 </ul>
 
 </div>
@@ -241,10 +241,50 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section class="tex2jax_ignore mathjax_ignore" id="how-to-customize-a-benched-report-in-sphinx">
-<h1>How to customize a Benched report in Sphinx<a class="headerlink" href="#how-to-customize-a-benched-report-in-sphinx" title="Link to this heading">¶</a></h1>
-<p>This guide shows you how to transform benchmark report data during a Sphinx build
-before Benched writes the static JSON artifact.</p>
+          <section class="tex2jax_ignore mathjax_ignore" id="how-to-embed-and-customize-a-benched-report-in-sphinx">
+<h1>How to embed and customize a Benched report in Sphinx<a class="headerlink" href="#how-to-embed-and-customize-a-benched-report-in-sphinx" title="Link to this heading">¶</a></h1>
+<p>This guide shows you how to include a Benched report inline and transform its data
+during a Sphinx build.</p>
+<section id="embed-a-report-inline">
+<h2>Embed a report inline<a class="headerlink" href="#embed-a-report-inline" title="Link to this heading">¶</a></h2>
+<p>Add the directive where you want the report to appear in a reStructuredText page:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+   <span class="nc">:view:</span> trend
+   <span class="nc">:metric:</span> median
+   <span class="nc">:x-axis:</span> version
+</pre></div>
+</div>
+<p>Use the same directive in a MyST Markdown page:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>```{benched} ../benchmark-results
+:view: trend
+:metric: median
+:x-axis: version
+```
+</pre></div>
+</div>
+<p>Both forms render the interactive report directly in the page. This documentation’s
+generated example data is embedded below. Sphinx reports inherit the surrounding
+page’s light or dark theme by default.</p>
+</section>
+<section id="keep-an-embedded-report-compact">
+<h2>Keep an embedded report compact<a class="headerlink" href="#keep-an-embedded-report-compact" title="Link to this heading">¶</a></h2>
+<p>Preselect filters with directive options, then list controls that readers should not
+change in <code class="docutils literal notranslate"><span class="pre">:hide-controls:</span></code>:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+   <span class="nc">:view:</span> trend
+   <span class="nc">:metric:</span> median
+   <span class="nc">:x-axis:</span> version
+   <span class="nc">:benchmark:</span> tests/test_parse.py::test_parse|size=100
+   <span class="nc">:machine:</span> linux,macos
+   <span class="nc">:python:</span> 3.11,3.12
+   <span class="nc">:memory:</span> 16,32
+   <span class="nc">:hide-controls:</span> view,metric,x-axis,benchmark,machine,python,memory
+</pre></div>
+</div>
+<p>Hidden controls do not disable their selections. Use <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code> to override the surrounding page; the default is <code class="docutils literal notranslate"><span class="pre">inherit</span></code>.</p>
+<p>This live example preselects two machines, two Python versions, and two memory buckets
+while omitting their controls:</p>
+<benched-report src="../../_static/benched/reports/docs-results-743997191d5c.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
 <section id="connect-a-report-transformer">
 <h2>Connect a report transformer<a class="headerlink" href="#connect-a-report-transformer" title="Link to this heading">¶</a></h2>
 <p>Add a callback and Sphinx <code class="docutils literal notranslate"><span class="pre">setup</span></code> function to <code class="docutils literal notranslate"><span class="pre">conf.py</span></code>:</p>
@@ -269,15 +309,6 @@ before Benched writes the static JSON artifact.</p>
 <p>The callback receives the compiled <code class="docutils literal notranslate"><span class="pre">Report</span></code> and current directive options. Return a
 <code class="docutils literal notranslate"><span class="pre">Report</span></code>, a report dictionary, or <code class="docutils literal notranslate"><span class="pre">None</span></code> to keep the original. Benched validates a
 replacement against the report model before writing it.</p>
-</section>
-<section id="add-the-directive">
-<h2>Add the directive<a class="headerlink" href="#add-the-directive" title="Link to this heading">¶</a></h2>
-<p>Use the directive normally:</p>
-<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
-   <span class="nc">:view:</span> trend
-   <span class="nc">:metric:</span> median
-</pre></div>
-</div>
 <p>The event runs after Benched loads report JSON or compiles stored runs and before it
 writes <code class="docutils literal notranslate"><span class="pre">_static/benched/reports/*.json</span></code>. Benchmark execution is never part of the
 Sphinx build.</p>
@@ -345,9 +376,10 @@ composed.</p>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">How to customize a Benched report in Sphinx</a><ul>
+<li><a class="reference internal" href="#">How to embed and customize a Benched report in Sphinx</a><ul>
+<li><a class="reference internal" href="#embed-a-report-inline">Embed a report inline</a></li>
+<li><a class="reference internal" href="#keep-an-embedded-report-compact">Keep an embedded report compact</a></li>
 <li><a class="reference internal" href="#connect-a-report-transformer">Connect a report transformer</a></li>
-<li><a class="reference internal" href="#add-the-directive">Add the directive</a></li>
 <li><a class="reference internal" href="#apply-options-conditionally">Apply options conditionally</a></li>
 </ul>
 </li>
@@ -366,7 +398,7 @@ composed.</p>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="../../_static/benched/benched.js?v=46255ef4"></script>
+    <script type="module" src="../../_static/benched/benched.js?v=c6f8777b"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
     </body>
