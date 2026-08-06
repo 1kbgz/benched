@@ -24,10 +24,72 @@ benched-report.wa-dark {
 }
 
 benched-report[data-theme="inherit"] {
+  --_benched-accent-color: var(
+    --benched-accent-color,
+    var(
+      --color-brand-primary,
+      var(--color-primary, var(--sy-c-link, var(--wa-color-brand-60, #2563eb)))
+    )
+  );
   --_benched-grid-color: var(
     --benched-grid-color,
-    color-mix(in srgb, currentColor 22%, transparent)
+    var(
+      --color-background-border,
+      var(
+        --color-border,
+        var(--sy-c-divider, color-mix(in srgb, currentColor 22%, transparent))
+      )
+    )
   );
+  --_benched-muted-color: var(
+    --benched-muted-color,
+    var(
+      --color-foreground-muted,
+      var(
+        --color-muted-foreground,
+        var(--sy-c-light, var(--_benched-muted-fallback))
+      )
+    )
+  );
+  --_benched-muted-fallback: var(--wa-color-neutral-40, #64748b);
+  --_benched-surface-color: var(
+    --benched-surface-color,
+    var(
+      --color-background-primary,
+      var(
+        --color-background,
+        var(--sy-c-background, var(--_benched-surface-fallback))
+      )
+    )
+  );
+  --_benched-surface-fallback: #fff;
+  --_benched-text-color: var(
+    --benched-text-color,
+    var(
+      --color-foreground-primary,
+      var(--color-foreground, var(--sy-c-text, var(--_benched-text-fallback)))
+    )
+  );
+  --_benched-text-fallback: var(--wa-color-neutral-10, #101219);
+  --wa-color-focus: var(--_benched-accent-color);
+  --wa-color-surface-default: var(--_benched-surface-color);
+  --wa-color-surface-raised: var(--_benched-surface-color);
+  --wa-color-surface-border: var(--_benched-grid-color);
+  --wa-color-text-link: var(--_benched-accent-color);
+  --wa-color-text-normal: var(--_benched-text-color);
+  --wa-color-text-quiet: var(--_benched-muted-color);
+  --wa-form-control-activated-color: var(--_benched-accent-color);
+  --wa-form-control-background-color: var(--_benched-surface-color);
+  --wa-form-control-border-color: var(--_benched-grid-color);
+  --wa-form-control-hint-color: var(--_benched-muted-color);
+  --wa-form-control-label-color: var(--_benched-text-color);
+  --wa-form-control-value-color: var(--_benched-text-color);
+}
+
+benched-report[data-theme="inherit"].wa-dark {
+  --_benched-muted-fallback: var(--wa-color-neutral-60, #9194a2);
+  --_benched-surface-fallback: var(--wa-color-neutral-05, #101219);
+  --_benched-text-fallback: var(--wa-color-neutral-95, #f1f2f3);
 }
 
 benched-report[data-theme="inherit"] .benched-card::part(base) {
