@@ -217,6 +217,7 @@ export class BenchedReport extends HTMLElement {
   private request?: AbortController;
   private media?: MediaQueryList;
   private themeObserver?: MutationObserver;
+  private inheritedChartStyle?: string;
   private theme: Theme = "light";
 
   private readonly handleMediaChange = (event: MediaQueryListEvent) => {
@@ -349,14 +350,19 @@ export class BenchedReport extends HTMLElement {
 
   private observeInheritedTheme() {
     this.themeObserver?.disconnect();
+    this.inheritedChartStyle = this.chartStyleSignature();
     this.themeObserver = new MutationObserver(() => {
       if (!this.inheritsTheme()) return;
       const theme = this.inheritedTheme();
-      if (theme === this.theme) {
-        if (this.report) this.render();
-      } else {
+      if (theme !== this.theme) {
         this.setTheme(theme);
+        this.inheritedChartStyle = this.chartStyleSignature();
+        return;
       }
+      const chartStyle = this.chartStyleSignature();
+      if (chartStyle === this.inheritedChartStyle) return;
+      this.inheritedChartStyle = chartStyle;
+      if (this.report) this.render();
     });
     for (
       let element = this.parentElement;
@@ -368,6 +374,15 @@ export class BenchedReport extends HTMLElement {
         attributeFilter: ["class", "style", "data-theme"],
       });
     }
+  }
+
+  private chartStyleSignature(): string {
+    const style = getComputedStyle(this);
+    return [
+      style.color,
+      style.getPropertyValue("--_benched-grid-color"),
+      ...SERIES_COLORS.map(([property]) => style.getPropertyValue(property)),
+    ].join("\u0000");
   }
 
   private applyTheme() {
@@ -992,6 +1007,8 @@ export class BenchedReport extends HTMLElement {
     const chart = createChart(chartContainer, {
       autoSize: true,
       height: 480,
+      handleScale: false,
+      handleScroll: false,
       layout: {
         attributionLogo: false,
         background: { type: ColorType.Solid, color: "transparent" },
@@ -1197,6 +1214,8 @@ export class BenchedReport extends HTMLElement {
       const chart = createChart(chartContainer, {
         autoSize: true,
         height: 240,
+        handleScale: false,
+        handleScroll: false,
         layout: {
           attributionLogo: false,
           background: { type: ColorType.Solid, color: "transparent" },

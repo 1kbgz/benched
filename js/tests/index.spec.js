@@ -365,6 +365,31 @@ test.describe("Benched report", () => {
     ).toBeVisible();
   });
 
+  test("lets the page scroll over overview and detail charts", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      document.body.style.minHeight = "4000px";
+    });
+    await select(page, ".benched-view-select", "trend");
+
+    const report = page.locator("benched-report");
+    const overviewChart = report.locator(".benched-mini-chart").first();
+    await expect(overviewChart.locator("canvas").first()).toBeVisible();
+    await overviewChart.hover({ position: { x: 200, y: 100 } });
+    await page.mouse.wheel(0, 500);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+
+    await select(page, ".benched-benchmark-select", "benchmark-0");
+    await page.evaluate(() => scrollTo(0, 0));
+    const detailChart = report.locator(".benched-chart");
+    await expect(detailChart.locator("canvas").first()).toBeVisible();
+    await detailChart.hover({ position: { x: 200, y: 100 } });
+    await page.mouse.wheel(0, 500);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  });
+
   test("inherits and follows its host theme", async ({ page }) => {
     await page.goto("/");
     await page.evaluate(() => {
@@ -376,6 +401,7 @@ test.describe("Benched report", () => {
       host.style.color = "rgb(230, 235, 242)";
       const embedded = document.createElement("benched-report");
       embedded.setAttribute("src", "report.json");
+      embedded.setAttribute("view", "trend");
       embedded.setAttribute("data-theme", "inherit");
       host.append(embedded);
       document.body.append(host);
@@ -384,6 +410,18 @@ test.describe("Benched report", () => {
     const report = page.locator("#themed-host benched-report");
     await expect(report).toHaveAttribute("data-resolved-theme", "dark");
     await expect(report.locator(".benched-theme-toggle")).toHaveCount(0);
+    await expect(report.locator("canvas").first()).toBeVisible();
+    await report.evaluate((element) => {
+      window.__benchedCanvas = element.querySelector("canvas");
+    });
+    await page.locator("#themed-host").evaluate((host) => {
+      host.classList.add("is-scrolling");
+    });
+    expect(
+      await report.evaluate(
+        (element) => window.__benchedCanvas === element.querySelector("canvas"),
+      ),
+    ).toBe(true);
     expect(
       await report.evaluate((element) => ({
         background: getComputedStyle(element).backgroundColor,
