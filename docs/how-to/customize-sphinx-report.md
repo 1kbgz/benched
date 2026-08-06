@@ -60,6 +60,27 @@ while omitting their controls:
 :hide-controls: view,metric,x-axis,benchmark,machine,python,memory
 ```
 
+## Match the surrounding Sphinx theme
+
+Inherited reports automatically follow Furo, Sphinx Awesome, and Shibuya in light
+and dark modes. Benched uses each theme's semantic colors for chart accents, grid
+lines, controls, surfaces, and text.
+
+Override any inferred color from your documentation CSS:
+
+```css
+benched-report {
+  --benched-accent-color: #7c3aed;
+  --benched-grid-color: #d4d4d8;
+  --benched-muted-color: #71717a;
+  --benched-surface-color: #ffffff;
+  --benched-text-color: #18181b;
+}
+```
+
+These overrides apply when the report uses `:theme: inherit`. Use selectors from
+your Sphinx theme when an override should differ between light and dark modes.
+
 ## Connect a report transformer
 
 Add a callback and Sphinx `setup` function to `conf.py`:

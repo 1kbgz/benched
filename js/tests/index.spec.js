@@ -79,6 +79,94 @@ function largeReport(revisionCount = 100, benchmarkCount = 100) {
   };
 }
 
+const YARDANG_THEMES = [
+  {
+    name: "Furo",
+    signal: "furo",
+    tokens: {
+      accent: "--color-brand-primary",
+      grid: "--color-background-border",
+      muted: "--color-foreground-muted",
+      surface: "--color-background-primary",
+      text: "--color-foreground-primary",
+    },
+  },
+  {
+    name: "Sphinx Awesome",
+    signal: "sphinxawesome",
+    tokens: {
+      accent: "--color-primary",
+      grid: "--color-border",
+      muted: "--color-muted-foreground",
+      surface: "--color-background",
+      text: "--color-foreground",
+    },
+  },
+  {
+    name: "Shibuya",
+    signal: "shibuya",
+    tokens: {
+      accent: "--sy-c-link",
+      grid: "--sy-c-divider",
+      muted: "--sy-c-light",
+      surface: "--sy-c-background",
+      text: "--sy-c-text",
+    },
+  },
+];
+
+const THEME_PALETTES = {
+  dark: {
+    accent: "rgb(61, 148, 255)",
+    grid: "rgb(48, 51, 53)",
+    muted: "rgb(129, 134, 141)",
+    surface: "rgb(19, 20, 22)",
+    text: "rgb(207, 208, 208)",
+  },
+  light: {
+    accent: "rgb(10, 75, 255)",
+    grid: "rgb(220, 221, 222)",
+    muted: "rgb(90, 91, 92)",
+    surface: "rgb(250, 251, 252)",
+    text: "rgb(20, 21, 22)",
+  },
+};
+
+async function applyYardangTheme(page, theme, mode) {
+  await page.evaluate(
+    ({ mode, palette, signal, tokens }) => {
+      const source =
+        signal === "furo" ? document.body : document.documentElement;
+      for (const [role, property] of Object.entries(tokens)) {
+        source.style.setProperty(property, palette[role]);
+      }
+      document.body.style.backgroundColor = palette.surface;
+      document.body.style.color = palette.text;
+      if (signal === "furo") document.body.dataset.theme = mode;
+      if (signal === "sphinxawesome")
+        document.documentElement.classList.toggle("dark", mode === "dark");
+      if (signal === "shibuya") {
+        document.documentElement.classList.remove("light", "dark");
+        document.documentElement.classList.add(mode);
+      }
+    },
+    { mode, palette: THEME_PALETTES[mode], ...theme },
+  );
+}
+
+async function reportPalette(report) {
+  return report.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      accent: style.getPropertyValue("--_benched-accent-color").trim(),
+      grid: style.getPropertyValue("--_benched-grid-color").trim(),
+      muted: style.getPropertyValue("--wa-color-text-quiet").trim(),
+      surface: style.getPropertyValue("--wa-color-surface-default").trim(),
+      text: style.getPropertyValue("--wa-color-text-normal").trim(),
+    };
+  });
+}
+
 test.describe("Benched report", () => {
   test("loads report data and changes among every view", async ({ page }) => {
     await page.goto("/");
@@ -440,6 +528,27 @@ test.describe("Benched report", () => {
     await expect(report).toHaveAttribute("data-resolved-theme", "light");
     await expect(report).toHaveCSS("color", "rgb(22, 28, 36)");
   });
+
+  for (const theme of YARDANG_THEMES) {
+    test(`adapts to ${theme.name} light and dark modes`, async ({ page }) => {
+      await page.goto("/");
+      await page.locator("benched-report").evaluate((element) => {
+        const host = document.createElement("main");
+        element.replaceWith(host);
+        element.setAttribute("data-theme", "inherit");
+        host.append(element);
+      });
+
+      const report = page.locator("benched-report");
+      await applyYardangTheme(page, theme, "dark");
+      await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+      expect(await reportPalette(report)).toEqual(THEME_PALETTES.dark);
+
+      await applyYardangTheme(page, theme, "light");
+      await expect(report).toHaveAttribute("data-resolved-theme", "light");
+      expect(await reportPalette(report)).toEqual(THEME_PALETTES.light);
+    });
+  }
 
   test("renders empty and fetch error states", async ({ page }) => {
     await page.route("**/empty.json", (route) =>
