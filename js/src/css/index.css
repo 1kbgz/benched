@@ -199,6 +199,41 @@ body:has(> benched-report.wa-dark:only-child) {
   width: 100%;
 }
 
+.benched-trend-description {
+  color: var(--wa-color-text-quiet, #64748b);
+  margin-block: 0 var(--wa-space-m, 1rem);
+}
+
+.benched-trend-grid {
+  display: grid;
+  gap: var(--wa-space-m, 1rem);
+  grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+}
+
+.benched-trend-card-header {
+  align-items: baseline;
+  display: flex;
+  gap: var(--wa-space-s, 0.75rem);
+  justify-content: space-between;
+}
+
+.benched-trend-card-header a {
+  color: var(--wa-color-text-link, #2563eb);
+  font-weight: var(--wa-font-weight-semibold, 600);
+}
+
+.benched-trend-card-header span {
+  color: var(--wa-color-text-quiet, #64748b);
+  font-size: var(--wa-font-size-s, 0.875rem);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.benched-mini-chart {
+  min-height: 240px;
+  width: 100%;
+}
+
 .benched-chart-value {
   display: block;
   margin-bottom: var(--wa-space-xs, 0.5rem);
@@ -261,6 +296,10 @@ body:has(> benched-report.wa-dark:only-child) {
 .benched-message {
   display: block;
   margin: var(--wa-space-l, 1.5rem);
+}
+
+.benched-view-message {
+  margin-inline: 0;
 }
 
 @media (max-width: 52rem) {
