@@ -212,7 +212,7 @@ export class BenchedReport extends HTMLElement {
   }
 
   private report?: Report;
-  private chart?: IChartApi;
+  private charts = new Map<HTMLElement, IChartApi>();
   private chartResizeObserver?: ResizeObserver;
   private request?: AbortController;
   private media?: MediaQueryList;
@@ -437,6 +437,15 @@ export class BenchedReport extends HTMLElement {
     this.replaceChildren(callout);
   }
 
+  private renderViewMessage(container: HTMLElement, message: string) {
+    const callout = document.createElement("wa-callout");
+    callout.className = "benched-message benched-view-message";
+    callout.setAttribute("appearance", "outlined");
+    callout.setAttribute("role", "status");
+    callout.textContent = message;
+    container.replaceChildren(callout);
+  }
+
   private render() {
     this.removeChart();
     const report = this.report;
@@ -582,8 +591,16 @@ export class BenchedReport extends HTMLElement {
       this.getAttribute("memory"),
       memoryValues,
     );
-    const benchmarks = this.visibleBenchmarks();
+    const visibleBenchmarks = this.visibleBenchmarks();
     const requestedBenchmark = this.getAttribute("benchmark") ?? "";
+    const unavailableSelection = report.benchmarks.find(
+      (benchmark) =>
+        benchmark.benchmark_id === requestedBenchmark &&
+        !visibleBenchmarks.includes(benchmark),
+    );
+    const benchmarks = unavailableSelection
+      ? [unavailableSelection, ...visibleBenchmarks]
+      : visibleBenchmarks;
     const activeBenchmarkIndex = benchmarks.findIndex(
       (benchmark) => benchmark.benchmark_id === requestedBenchmark,
     );
@@ -665,7 +682,7 @@ export class BenchedReport extends HTMLElement {
         : `<svg data-icon="moon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"></path>
           </svg>`;
-    benchmark.toggleAttribute("disabled", benchmarks.length < 2);
+    benchmark.toggleAttribute("disabled", benchmarks.length === 0);
     view.addEventListener("change", (event) =>
       this.setAttribute("view", selectedValue(event)),
     );
@@ -782,22 +799,20 @@ export class BenchedReport extends HTMLElement {
     );
   }
 
-  private activeBenchmark(): Benchmark {
+  private activeBenchmark(): Benchmark | undefined {
     const benchmarks = this.visibleBenchmarks();
     const requested = this.getAttribute("benchmark");
-    return (
-      benchmarks.find((benchmark) => benchmark.benchmark_id === requested) ??
-      benchmarks[0]
-    );
+    return benchmarks.find((benchmark) => benchmark.benchmark_id === requested);
   }
 
   private displayedBenchmarks(): Benchmark[] {
     const benchmarks = this.visibleBenchmarks();
     const requested = this.getAttribute("benchmark");
+    if (!requested) return benchmarks;
     const selected = benchmarks.find(
       (benchmark) => benchmark.benchmark_id === requested,
     );
-    return selected ? [selected] : benchmarks;
+    return selected ? [selected] : [];
   }
 
   private points(benchmark: Benchmark): SeriesPoint[] {
@@ -834,6 +849,13 @@ export class BenchedReport extends HTMLElement {
   private renderOverview(container: HTMLElement) {
     const runs = this.activeRuns();
     const benchmarks = this.visibleBenchmarks();
+    if (runs.length === 0 || benchmarks.length === 0) {
+      this.renderViewMessage(
+        container,
+        "No benchmark data matches the selected filters.",
+      );
+      return;
+    }
     const machines = new Set(runs.map((run) => run.machine.id).filter(Boolean));
     const pythonVersions = new Set(
       runs.map((run) => pythonFeatureVersion(run.environment.python_version)),
@@ -889,9 +911,16 @@ export class BenchedReport extends HTMLElement {
   }
 
   private renderTrend(container: HTMLElement) {
+    if (!this.hasAttribute("benchmark")) {
+      this.renderTrendMatrix(container);
+      return;
+    }
     const benchmark = this.activeBenchmark();
     if (!benchmark) {
-      this.renderMessage("No benchmark data matches the selected filters.");
+      this.renderViewMessage(
+        container,
+        "No benchmark data matches the selected filters.",
+      );
       return;
     }
     const report = this.report as Report;
@@ -905,6 +934,13 @@ export class BenchedReport extends HTMLElement {
       }))
       .filter((group) => group.points.length > 0);
     const points = groups.flatMap((group) => group.points);
+    if (points.length === 0) {
+      this.renderViewMessage(
+        container,
+        `No ${this.metric} data matches the selected filters.`,
+      );
+      return;
+    }
     const title = document.createElement("h2");
     title.textContent = benchmark.name;
     const value = document.createElement("output");
@@ -953,7 +989,7 @@ export class BenchedReport extends HTMLElement {
         Date.parse(run?.started_at ?? "") / 1000,
       ) as UTCTimestamp;
     };
-    this.chart = createChart(chartContainer, {
+    const chart = createChart(chartContainer, {
       autoSize: true,
       height: 480,
       layout: {
@@ -992,7 +1028,7 @@ export class BenchedReport extends HTMLElement {
     const series = groups.map((group, index) => {
       const [property, fallback] = SERIES_COLORS[index % SERIES_COLORS.length];
       const color = style.getPropertyValue(property).trim() || fallback;
-      const line = this.chart?.addSeries(LineSeries, {
+      const line = chart.addSeries(LineSeries, {
         color,
         priceFormat,
         title: group.label,
@@ -1013,7 +1049,7 @@ export class BenchedReport extends HTMLElement {
       legend.append(item);
       return { line, label: group.label };
     });
-    this.chart.subscribeCrosshairMove((event) => {
+    chart.subscribeCrosshairMove((event) => {
       for (const item of series) {
         if (!item.line) continue;
         const datum = event.seriesData.get(item.line);
@@ -1023,16 +1059,7 @@ export class BenchedReport extends HTMLElement {
         }
       }
     });
-    const chart = this.chart;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (this.chart === chart) chart.timeScale().fitContent();
-      });
-    });
-    this.chartResizeObserver = new ResizeObserver(() => {
-      if (this.chart === chart) chart.timeScale().fitContent();
-    });
-    this.chartResizeObserver.observe(chartContainer);
+    this.trackChart(chartContainer, chart);
 
     const exactValues = groups
       .flatMap((group) =>
@@ -1070,6 +1097,147 @@ export class BenchedReport extends HTMLElement {
     container.append(details);
   }
 
+  private renderTrendMatrix(container: HTMLElement) {
+    const benchmarks = this.visibleBenchmarks();
+    const activeRuns = this.activeRuns();
+    if (activeRuns.length === 0 || benchmarks.length === 0) {
+      this.renderViewMessage(
+        container,
+        "No benchmark data matches the selected filters.",
+      );
+      return;
+    }
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Benchmark trends";
+    const description = document.createElement("p");
+    description.className = "benched-trend-description";
+    description.textContent = `Each line averages ${this.metric} across selected results at each ${this.xAxis === "version" ? "package version" : "day"}.`;
+    const grid = document.createElement("div");
+    grid.className = "benched-trend-grid";
+    container.append(heading, description, grid);
+
+    const runs = new Map(activeRuns.map((run) => [run.run_id, run]));
+    const axisLabels = new Map<number, string>();
+    const versionCoordinates = new Map<string, UTCTimestamp>();
+    if (this.xAxis === "version") {
+      for (const run of [...activeRuns].sort((left, right) =>
+        left.started_at.localeCompare(right.started_at),
+      )) {
+        const version =
+          run.subject.version ?? run.subject.revision ?? run.run_id;
+        if (versionCoordinates.has(version)) continue;
+        const coordinate = (versionCoordinates.size + 1) as UTCTimestamp;
+        versionCoordinates.set(version, coordinate);
+        axisLabels.set(coordinate, version);
+      }
+    }
+    const pointTime = (point: SeriesPoint): UTCTimestamp => {
+      const run = runs.get(point.run_id);
+      if (this.xAxis === "version") {
+        const version =
+          run?.subject.version ?? run?.subject.revision ?? point.run_id;
+        return versionCoordinates.get(version) as UTCTimestamp;
+      }
+      const timestamp = Date.parse(run?.started_at ?? "");
+      return (Math.floor(timestamp / 86_400_000) * 86_400) as UTCTimestamp;
+    };
+    const style = getComputedStyle(this);
+    const [property, fallback] = SERIES_COLORS[0];
+    const color = style.getPropertyValue(property).trim() || fallback;
+
+    for (const benchmark of benchmarks) {
+      const values = new Map<UTCTimestamp, number[]>();
+      const points = this.points(benchmark).filter(
+        (point) => point.metrics[this.metric] != null,
+      );
+      for (const point of points) {
+        const time = pointTime(point);
+        const bucket = values.get(time) ?? [];
+        bucket.push(point.metrics[this.metric] as number);
+        values.set(time, bucket);
+      }
+      const data = [...values]
+        .sort(([left], [right]) => Number(left) - Number(right))
+        .map(([time, bucket]) => ({
+          time,
+          value:
+            bucket.reduce((total, value) => total + value, 0) / bucket.length,
+        }));
+
+      const card = document.createElement("wa-card");
+      card.className = "benched-trend-card";
+      card.setAttribute("appearance", "outlined");
+      card.setAttribute("with-header", "");
+      const header = document.createElement("div");
+      header.className = "benched-trend-card-header";
+      header.setAttribute("slot", "header");
+      const link = document.createElement("a");
+      link.href = `#${encodeURIComponent(benchmark.benchmark_id)}`;
+      link.textContent = benchmark.name;
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.setAttribute("benchmark", benchmark.benchmark_id);
+      });
+      const latest = document.createElement("span");
+      latest.textContent = data.length
+        ? `${formatValue(data[data.length - 1].value)} ${benchmark.unit}`
+        : `No ${this.metric} data`;
+      header.append(link, latest);
+      const chartContainer = document.createElement("div");
+      chartContainer.className = "benched-mini-chart";
+      chartContainer.setAttribute(
+        "aria-label",
+        `${benchmark.name} aggregate ${this.metric} by ${this.xAxis === "version" ? "package version" : "time"}`,
+      );
+      card.append(header, chartContainer);
+      grid.append(card);
+      if (data.length === 0) continue;
+
+      const chart = createChart(chartContainer, {
+        autoSize: true,
+        height: 240,
+        layout: {
+          attributionLogo: false,
+          background: { type: ColorType.Solid, color: "transparent" },
+          textColor: style.color,
+        },
+        grid: {
+          vertLines: {
+            color:
+              style.getPropertyValue("--_benched-grid-color").trim() ||
+              "#d8dee9",
+          },
+          horzLines: {
+            color:
+              style.getPropertyValue("--_benched-grid-color").trim() ||
+              "#d8dee9",
+          },
+        },
+        localization:
+          this.xAxis === "version"
+            ? {
+                timeFormatter: (time: Time) =>
+                  axisLabels.get(Number(time)) ?? "unknown",
+              }
+            : undefined,
+        timeScale:
+          this.xAxis === "version"
+            ? {
+                tickMarkFormatter: (time: Time) =>
+                  axisLabels.get(Number(time)) ?? "",
+              }
+            : undefined,
+      });
+      const line = chart.addSeries(LineSeries, {
+        color,
+        priceFormat: chartPriceFormat(data.map((point) => point.value)),
+      });
+      line.setData(data);
+      this.trackChart(chartContainer, chart);
+    }
+  }
+
   private renderComparison(container: HTMLElement) {
     const rows = this.displayedBenchmarks().flatMap((benchmark) =>
       this.pointsBySeries(benchmark).map((group) => {
@@ -1093,6 +1261,13 @@ export class BenchedReport extends HTMLElement {
         ];
       }),
     );
+    if (rows.length === 0) {
+      this.renderViewMessage(
+        container,
+        "No benchmark data matches the selected filters.",
+      );
+      return;
+    }
     container.append(
       table(
         [
@@ -1108,11 +1283,30 @@ export class BenchedReport extends HTMLElement {
     );
   }
 
+  private trackChart(container: HTMLElement, chart: IChartApi) {
+    this.charts.set(container, chart);
+    this.chartResizeObserver ??= new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        this.charts
+          .get(entry.target as HTMLElement)
+          ?.timeScale()
+          .fitContent();
+      }
+    });
+    this.chartResizeObserver.observe(container);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (this.charts.get(container) === chart)
+          chart.timeScale().fitContent();
+      });
+    });
+  }
+
   private removeChart() {
     this.chartResizeObserver?.disconnect();
     this.chartResizeObserver = undefined;
-    this.chart?.remove();
-    this.chart = undefined;
+    for (const chart of this.charts.values()) chart.remove();
+    this.charts.clear();
   }
 }
 

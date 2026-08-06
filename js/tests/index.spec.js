@@ -89,12 +89,17 @@ test.describe("Benched report", () => {
       .filter({ hasText: "Python Versions" });
     await expect(pythonCard).toContainText("2");
     await expect(report.locator(".benched-metric-select")).toHaveCount(0);
-    for (const view of ["trend", "comparison"]) {
-      await select(page, ".benched-view-select", view);
-      await expect(report).toHaveAttribute("view", view);
-      await expect(report.locator(".benched-table")).toBeVisible();
-    }
     await select(page, ".benched-view-select", "trend");
+    await expect(report).toHaveAttribute("view", "trend");
+    await expect(report.locator(".benched-trend-card")).toHaveCount(2);
+    await expect(
+      report.locator(".benched-mini-chart canvas").first(),
+    ).toBeVisible();
+    await expect(report.locator(".benched-benchmark-select")).toHaveJSProperty(
+      "value",
+      "all",
+    );
+    await select(page, ".benched-benchmark-select", "benchmark-0");
     await expect(report.locator(".benched-chart canvas").first()).toBeVisible();
     await expect(report.locator('a[href*="tradingview.com"]')).toHaveCount(0);
     await expect(report.locator(".benched-chart-legend span")).toHaveCount(2);
@@ -108,6 +113,9 @@ test.describe("Benched report", () => {
       "aria-label",
       /by package version$/,
     );
+    await select(page, ".benched-view-select", "comparison");
+    await expect(report.locator(".benched-table")).toBeVisible();
+    await select(page, ".benched-view-select", "trend");
     await select(page, ".benched-x-axis-select", "time");
     await expect(report).toHaveAttribute("x-axis", "time");
     await toggle(page, ".benched-machine-select", "macos");
@@ -231,6 +239,40 @@ test.describe("Benched report", () => {
     await expect(report.locator("h2")).toHaveText("test_parse[1000]");
   });
 
+  test("keeps controls available when filters have no matching runs", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await select(page, ".benched-view-select", "trend");
+    await toggle(page, ".benched-machine-select", "macos");
+    await toggle(page, ".benched-memory-select", "16 GiB");
+
+    const report = page.locator("benched-report");
+    await expect(report.locator(".benched-view-message")).toContainText(
+      "No benchmark data matches the selected filters.",
+    );
+    await expect(report.locator(".benched-card")).toBeVisible();
+    await expect(report.locator(".benched-controls")).toBeVisible();
+    await expect(report).toHaveAttribute("machine", "linux");
+    await expect(report).toHaveAttribute("memory", "32");
+
+    await toggle(page, ".benched-memory-select", "16 GiB");
+    await expect(report.locator(".benched-trend-card")).toHaveCount(2);
+
+    await toggle(page, ".benched-machine-select", "macos");
+    await select(page, ".benched-benchmark-select", "benchmark-1");
+    await toggle(page, ".benched-machine-select", "linux");
+    await expect(report.locator(".benched-view-message")).toContainText(
+      "No benchmark data matches the selected filters.",
+    );
+    await expect(report.locator(".benched-benchmark-select")).toHaveJSProperty(
+      "value",
+      "benchmark-0",
+    );
+    await select(page, ".benched-benchmark-select", "all");
+    await expect(report.locator(".benched-trend-card")).toHaveCount(1);
+  });
+
   test("detects and persists the preferred color scheme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto("/");
@@ -286,6 +328,7 @@ test.describe("Benched report", () => {
     await expect(view).toBeFocused();
     await expect(view).toHaveAttribute("label", "View");
     await select(page, ".benched-view-select", "trend");
+    await select(page, ".benched-benchmark-select", "benchmark-0");
     await expect(
       page.getByRole("table", { name: /trend values/ }),
     ).toBeVisible();
@@ -412,6 +455,12 @@ test.describe("Benched report", () => {
     const overviewMilliseconds = Date.now() - started;
 
     await select(page, ".benched-view-select", "trend");
+    await expect(report.locator(".benched-trend-card")).toHaveCount(100);
+    await expect(
+      report.locator(".benched-mini-chart canvas").first(),
+    ).toBeVisible();
+    const matrixMilliseconds = Date.now() - started;
+    await select(page, ".benched-benchmark-select", "benchmark-0");
     await expect(report.locator(".benched-chart canvas").first()).toBeVisible();
     await expect(report.locator(".benched-chart-legend span")).toHaveCount(15);
     await toggle(page, ".benched-machine-select", "windows-x86");
@@ -424,6 +473,7 @@ test.describe("Benched report", () => {
           bytes: new TextEncoder().encode(payload).length,
           points: 150_000,
           overview_milliseconds: overviewMilliseconds,
+          matrix_milliseconds: matrixMilliseconds,
           trend_milliseconds: trendMilliseconds,
         },
         null,
@@ -432,9 +482,10 @@ test.describe("Benched report", () => {
       contentType: "application/json",
     });
     console.info(
-      `large report: ${payload.length} bytes, overview ${overviewMilliseconds} ms, filtered trend ${trendMilliseconds} ms`,
+      `large report: ${payload.length} bytes, overview ${overviewMilliseconds} ms, matrix ${matrixMilliseconds} ms, filtered trend ${trendMilliseconds} ms`,
     );
     expect(overviewMilliseconds).toBeLessThan(15_000);
+    expect(matrixMilliseconds).toBeLessThan(20_000);
     expect(trendMilliseconds).toBeLessThan(20_000);
   });
 });
