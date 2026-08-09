@@ -93,7 +93,6 @@ jobs:
         with:
           name: dist
           path: dist
-        if: matrix.os == 'ubuntu-latest'
 
   compatibility:
     runs-on: ${{ matrix.os }}
