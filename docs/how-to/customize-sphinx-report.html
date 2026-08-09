@@ -6,14 +6,14 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="How to migrate ASV history to Benched" href="migrate-from-asv.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>How to embed and customize a Benched report in Sphinx - Benched v0.3.0</title>
+        <title>How to embed and customize a Benched report in Sphinx - Benched v0.4.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/benched/benched.css?v=3103afd3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/benched/benched.css?v=8486d09b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=890fd012" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.3.0</code></div></a>
+      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.3.0</code></span>
+  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -284,7 +284,25 @@ change in <code class="docutils literal notranslate"><span class="pre">:hide-con
 <p>Hidden controls do not disable their selections. Use <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code> to override the surrounding page; the default is <code class="docutils literal notranslate"><span class="pre">inherit</span></code>.</p>
 <p>This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:</p>
-<benched-report src="../../_static/benched/reports/docs-results-b56a3cfc1558.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
+<benched-report src="../../_static/benched/reports/docs-results-40976395eed4.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
+<section id="match-the-surrounding-sphinx-theme">
+<h2>Match the surrounding Sphinx theme<a class="headerlink" href="#match-the-surrounding-sphinx-theme" title="Link to this heading">¶</a></h2>
+<p>Inherited reports automatically follow Furo, Sphinx Awesome, and Shibuya in light
+and dark modes. Benched uses each theme’s semantic colors for chart accents, grid
+lines, controls, surfaces, and text.</p>
+<p>Override any inferred color from your documentation CSS:</p>
+<div class="highlight-css notranslate"><div class="highlight"><pre><span></span><span class="nt">benched-report</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nv">--benched-accent-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#7c3aed</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--benched-grid-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#d4d4d8</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--benched-muted-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#71717a</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--benched-surface-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#ffffff</span><span class="p">;</span>
+<span class="w">  </span><span class="nv">--benched-text-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#18181b</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>These overrides apply when the report uses <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">inherit</span></code>. Use selectors from
+your Sphinx theme when an override should differ between light and dark modes.</p>
+</section>
 <section id="connect-a-report-transformer">
 <h2>Connect a report transformer<a class="headerlink" href="#connect-a-report-transformer" title="Link to this heading">¶</a></h2>
 <p>Add a callback and Sphinx <code class="docutils literal notranslate"><span class="pre">setup</span></code> function to <code class="docutils literal notranslate"><span class="pre">conf.py</span></code>:</p>
@@ -379,6 +397,7 @@ composed.</p>
 <li><a class="reference internal" href="#">How to embed and customize a Benched report in Sphinx</a><ul>
 <li><a class="reference internal" href="#embed-a-report-inline">Embed a report inline</a></li>
 <li><a class="reference internal" href="#keep-an-embedded-report-compact">Keep an embedded report compact</a></li>
+<li><a class="reference internal" href="#match-the-surrounding-sphinx-theme">Match the surrounding Sphinx theme</a></li>
 <li><a class="reference internal" href="#connect-a-report-transformer">Connect a report transformer</a></li>
 <li><a class="reference internal" href="#apply-options-conditionally">Apply options conditionally</a></li>
 </ul>
@@ -392,13 +411,13 @@ composed.</p>
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=e259d695"></script>
+</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="../../_static/benched/benched.js?v=a5e0c973"></script>
+    <script type="module" src="../../_static/benched/benched.js?v=2a665097"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
     </body>
