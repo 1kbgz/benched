@@ -78,11 +78,6 @@ jobs:
       - name: Build distributions
         run: make dist
 
-<<<<<<< before updating
-      - name: Test installed distributions
-        run: make test-dist
-        if: matrix.os == 'ubuntu-latest'
-=======
       - name: Test wheel
         uses: actions-ext/python/test-wheel@6e1b91a408ea89f49bc8aff8724f83826f7b5446
         with:
@@ -92,14 +87,12 @@ jobs:
         uses: actions-ext/python/test-sdist@6e1b91a408ea89f49bc8aff8724f83826f7b5446
         with:
           module: benched
->>>>>>> after updating
 
       - name: Upload distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: dist
           path: dist
-<<<<<<< before updating
         if: matrix.os == 'ubuntu-latest'
 
   compatibility:
@@ -152,6 +145,4 @@ jobs:
         with:
           name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
           path: junit.xml
-        if: ${{ always() }}
-=======
->>>>>>> after updating
+        if: always()
