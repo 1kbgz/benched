@@ -11,20 +11,12 @@ const COMMON_DEFINE = {
 };
 
 const COMMON_LOADER = {
-<<<<<<< before updating
-    ".css": "text",
-    ".html": "text",
-    ".jsx": "jsx",
-    ".png": "file",
-    ".ttf": "file",
-=======
   ".css": "text",
   ".html": "text",
   ".jsx": "jsx",
   ".png": "file",
   ".ttf": "file",
   ".wasm": "file",
->>>>>>> after updating
 };
 
 const DEFAULT_BUILD = {

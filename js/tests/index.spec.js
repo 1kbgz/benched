@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 
-<<<<<<< before updating
 async function select(page, selector, value) {
   await page.locator(selector).evaluate((element, selected) => {
     element.value = selected;
@@ -635,10 +634,5 @@ test.describe("Benched report", () => {
     expect(overviewMilliseconds).toBeLessThan(15_000);
     expect(matrixMilliseconds).toBeLessThan(20_000);
     expect(trendMilliseconds).toBeLessThan(20_000);
-=======
-test.describe("Basics", () => {
-  test("basic", async () => {
-    await expect("").toBe("");
->>>>>>> after updating
   });
 });
