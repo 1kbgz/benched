@@ -90,6 +90,10 @@ current_version = "0.4.0"
 commit = true
 tag = true
 commit_args = "-s"
+pre_commit_hooks = [
+    "pnpm --dir js install --lockfile-only --no-frozen-lockfile --ignore-scripts",
+    "git add js/pnpm-lock.yaml",
+]
 
 [tool.check-dist.sdist]
 present = ["benched", "js", "docs", "LICENSE", "pyproject.toml", "README.md"]
