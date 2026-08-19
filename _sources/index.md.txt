@@ -68,12 +68,20 @@ results_dir = ".benched/results"
 [tool.benched.subject]
 name = "my-package"
 distribution = "my-package"
+
+[tool.benched.env]
+MKL_NUM_THREADS = "1"
+OMP_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
 ```
 
 `results_dir` accepts any fsspec URL. Local files need no additional configuration;
 remote protocols need their normal backend package and credentials. Backend options
 can be supplied in `[tool.benched.storage_options]`, but environment- or profile-based
 credentials are preferable to secrets in `pyproject.toml`.
+
+`[tool.benched.env]` values override the parent environment for benchmark execution
+and collection without modifying the parent process.
 
 Report assets use Web Awesome for UI primitives and Lightweight Charts for plots. The
 renderer-neutral report pipeline feeds terminal, JSON, HTML, and third-party
@@ -125,6 +133,19 @@ result directories without installing or executing ASV. See [How to migrate ASV
 history to Benched](docs/how-to/migrate-from-asv.md) for same-project and separate
 suite/subject examples.
 
+Renamed benchmarks and imported histories with different identities can be joined
+with a declarative alias map. Aliases map the unparameterized benchmark identity and
+parameter names, and are applied when history is read for query, report, export, and
+Sphinx embedding; stored run documents are never rewritten:
+
+```toml
+[tool.benched.aliases.benchmarks]
+"solver.SolverSuite.time_solve" = "benchmarks/test_solver.py::test_solve"
+
+[tool.benched.aliases.parameters]
+problem_size = "n_assets"
+```
+
 ## Query and compare
 
 Run selectors accept an exact or unambiguous run-ID prefix, subject or suite revision,
@@ -136,10 +157,36 @@ benched history --machine ci --python 3.12.13
 benched show latest --benchmark "*test_parse*" --parameter size=100
 benched compare previous latest --metric median
 benched compare previous latest --fail-if median:10%
+benched compare previous latest --fail-if peak_memory:10%
+benched compare latest --baseline solver=mosek_qp
+benched report --latest-per-benchmark --format html
+benched export --format csv --output build/history.csv
+benched compact --keep 20
 ```
 
-Available comparison metrics are `median`, `mean`, `min`, `max`, and `ops`. Percentage
-and absolute gates fail only when regression exceeds threshold; equality is allowed.
+`benched compare RUN --baseline KEY=VALUE` compares within one run instead of across
+two. Measurements sharing every parameter except `KEY` are paired against the
+measurement whose `KEY` equals `VALUE`, producing per-variant ratios grouped by the
+remaining parameters.
+
+`benched export` writes matching history as one CSV or Parquet row per measurement.
+Parameters and statistics become columns; rows stay rectangular across benchmarks
+with different parameter sets, with nulls where a column does not apply. Parquet
+output requires `pyarrow` (`benched[export]`). The same table is available in Python
+via `benched.export.tabulate`.
+
+`benched compact --keep N` bounds history growth by consolidating all but the newest
+`N` raw run documents into a gzip-compressed `archive.json.gz` beside them. Archived
+runs keep full fidelity and remain visible to every query, report, and export.
+
+Each `benched run` records the pytest subprocess's peak resident set size as a
+`peak_memory` measurement in bytes. It is available to reports and `--metric`
+without a benchmark-side sampling fixture. All benchmarks executed in one pytest
+subprocess share that process peak; this measures resident memory, not allocations.
+
+Available comparison metrics are `median`, `mean`, `min`, `max`, `ops`, and
+`peak_memory`. Percentage and absolute gates fail only when regression exceeds
+threshold; equality is allowed.
 Comparison exit codes are `0` for success, `1` for gated regression, `2` for query or
 usage errors, `3` for incompatible data, and `4` for an explicitly selected failed
 benchmark run. `--allow-mismatch` permits deliberate machine or environment mismatch
@@ -152,6 +199,24 @@ Reports default to successful runs and terminal output. Repeat `--format` to com
 `terminal`, `json`, `html`, or installed third-party reporters. JSON and HTML output
 is written beneath the local `--output` directory; raw history remains on its
 configured fsspec backend.
+
+Use `--latest-per-benchmark` to coalesce partial histories. For each matching
+benchmark, the report keeps its measurement from the newest successful run while
+retaining that run's metadata and provenance. This mode cannot be combined with
+explicit run selectors or `--latest`.
+
+Recurring report definitions can be named once in `pyproject.toml` and referenced
+with `benched report --preset NAME` or the Sphinx `:preset:` option. A preset may
+carry `benchmark`, `metric`, `view`, and either `latest` or `latest_per_benchmark`;
+explicit command-line flags and directive options override preset values:
+
+```toml
+[tool.benched.reports.solver]
+benchmark = "*test_solver*"
+metric = "median"
+view = "trend"
+latest_per_benchmark = true
+```
 
 HTML output contains `index.html`, renderer-neutral report JSON, and packaged JS/CSS.
 Preview it with `benched serve`, which binds to `127.0.0.1` and a dynamically selected
@@ -244,8 +309,12 @@ extensions = ["benched.sphinx"]
 ```
 
 For a results directory, omit `:selector:` to include all successful runs or provide
-space-separated selectors such as `:selector: previous latest`. JSON and packaged
-assets are copied beneath Sphinx's `_static/benched` output with page-relative URLs.
+space-separated selectors such as `:selector: previous latest`. Use
+`:benchmark-filter: *test_parse*` to limit the benchmarks compiled from stored runs.
+`:benchmark:` takes one exact benchmark ID and preselects it in the embedded component;
+it does not filter report compilation. JSON and packaged assets are copied beneath
+Sphinx's `_static/benched` output with page-relative URLs. Local report files and
+results directories are rebuilt when their contents change.
 Sphinx embeds use `theme="inherit"` by default; set `:theme: light` or `:theme: dark`
 to override the surrounding page.
 The `benched-process-report` event can return a validated replacement report before

@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="How to import pytest-benchmark history" href="import-pytest-benchmark.html"><link rel="prev" title="Benched report example" href="../overview.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Run benchmarks in prepared environments - Benched v0.4.0</title>
+        <title>Run benchmarks in prepared environments - Benched v0.5.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -252,24 +252,24 @@ switch versions.</p>
 <p>Add Benched configuration to the benchmark suite’s <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>. When the suite
 benchmarks itself, the defaults inferred from <code class="docutils literal notranslate"><span class="pre">[project]</span></code> are sufficient:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched]</span>
-<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span>
-<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.benched/results&quot;</span>
+<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"benchmarks"</span><span class="p">]</span>
+<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".benched/results"</span>
 </pre></div>
 </div>
 <p>For a separate suite such as <code class="docutils literal notranslate"><span class="pre">csp-benchmarks</span></code>, name the installed code under test as
 the subject:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched]</span>
-<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;csp_benchmarks/benchmarks&quot;</span><span class="p">]</span>
-<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;csp_benchmarks/results&quot;</span>
+<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"csp_benchmarks/benchmarks"</span><span class="p">]</span>
+<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csp_benchmarks/results"</span>
 
 <span class="k">[tool.benched.suite]</span>
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;csp-benchmarks&quot;</span>
-<span class="n">repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/csp-community/csp-benchmarks&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csp-benchmarks"</span>
+<span class="n">repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://github.com/csp-community/csp-benchmarks"</span>
 
 <span class="k">[tool.benched.subject]</span>
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;csp&quot;</span>
-<span class="n">distribution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;csp&quot;</span>
-<span class="n">repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://github.com/Point72/csp&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csp"</span>
+<span class="n">distribution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"csp"</span>
+<span class="n">repository</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://github.com/Point72/csp"</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">distribution</span></code> lets Benched record the installed CSP version. Supply
@@ -289,9 +289,9 @@ is timed:</p>
     <span class="k">return</span> <span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">+</span> <span class="n">make_duration</span><span class="p">(</span><span class="n">num_ticks</span><span class="p">)</span>
 
 
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">benchmark</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s2">&quot;core&quot;</span><span class="p">)</span>
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;num_nodes&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1_000</span><span class="p">])</span>
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;num_ticks&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1_000</span><span class="p">,</span> <span class="mi">10_000</span><span class="p">])</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">benchmark</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="s2">"core"</span><span class="p">)</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">"num_nodes"</span><span class="p">,</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1_000</span><span class="p">])</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">"num_ticks"</span><span class="p">,</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1_000</span><span class="p">,</span> <span class="mi">10_000</span><span class="p">])</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_linear_graph</span><span class="p">(</span><span class="n">benchmark</span><span class="p">,</span> <span class="n">graph_times</span><span class="p">,</span> <span class="n">num_nodes</span><span class="p">):</span>
     <span class="n">graph</span> <span class="o">=</span> <span class="n">make_linear_graph</span><span class="p">(</span><span class="n">num_nodes</span><span class="p">)</span>
     <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">graph_times</span>
@@ -305,12 +305,12 @@ loop; pytest and pytest-benchmark provide those behaviors.</p>
 <section id="run-locally-or-in-ci">
 <h2>Run locally or in CI<a class="headerlink" href="#run-locally-or-in-ci" title="Link to this heading">¶</a></h2>
 <p>Install the desired subject and suite into one environment, then run Benched once:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;csp==2.10.0&quot;</span><span class="w"> </span><span class="s2">&quot;benched&gt;=0.1.0&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"csp==2.10.0"</span><span class="w"> </span><span class="s2">"benched&gt;=0.1.0"</span>
 benched<span class="w"> </span>run<span class="w"> </span>--machine<span class="w"> </span>github-actions
 </pre></div>
 </div>
 <p>For a source checkout, record its revision explicitly:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benched<span class="w"> </span>run<span class="w"> </span>--machine<span class="w"> </span>github-actions<span class="w"> </span>--subject-revision<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CSP_COMMIT</span><span class="s2">&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benched<span class="w"> </span>run<span class="w"> </span>--machine<span class="w"> </span>github-actions<span class="w"> </span>--subject-revision<span class="w"> </span><span class="s2">"</span><span class="nv">$CSP_COMMIT</span><span class="s2">"</span>
 </pre></div>
 </div>
 <p>Use a CI matrix to choose Python or subject versions. Each matrix job installs its
@@ -322,10 +322,10 @@ versions as separate collection axes.</p>
 <p>Mount the benchmark repository so the configured results directory persists on the
 host. Build or install dependencies before invoking Benched:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--volume<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">:</span><span class="nv">$PWD</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--workdir<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$PWD</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--volume<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">:</span><span class="nv">$PWD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--workdir<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>python:3.12<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>bash<span class="w"> </span>-lc<span class="w"> </span><span class="s1">&#39;pip install -e . &amp;&amp; pip install benched &amp;&amp; benched run --machine docker-3.12&#39;</span>
+<span class="w">  </span>bash<span class="w"> </span>-lc<span class="w"> </span><span class="s1">'pip install -e . &amp;&amp; pip install benched &amp;&amp; benched run --machine docker-3.12'</span>
 </pre></div>
 </div>
 <p>An fsspec URL can replace the mounted local results directory when its backend and
@@ -335,7 +335,7 @@ credentials are installed in the container.</p>
 <h2>Invoke Benched through Laxate<a class="headerlink" href="#invoke-benched-through-laxate" title="Link to this heading">¶</a></h2>
 <p>Laxate’s local, container, or remote runner only needs to execute Benched after it
 prepares the environment. The command replacing <code class="docutils literal notranslate"><span class="pre">asv</span> <span class="pre">run</span> <span class="pre">--python=same</span></code> is:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benched<span class="w"> </span>run<span class="w"> </span>--machine<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$MACHINE</span><span class="s2">&quot;</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benched<span class="w"> </span>run<span class="w"> </span>--machine<span class="w"> </span><span class="s2">"</span><span class="nv">$MACHINE</span><span class="s2">"</span>
 </pre></div>
 </div>
 <p>Keep environment creation, repository checkout, container lifecycle, SSH, and cloud
@@ -430,13 +430,13 @@ separate deployment step. Benched itself does not push repositories or deploy pa
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
+</div><script src="../../_static/documentation_options.js?v=1dd76d02"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="../../_static/benched/benched.js?v=2a665097"></script>
+    <script type="module" src="../../_static/benched/benched.js?v=287d4e6a"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
     </body>

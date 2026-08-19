@@ -47,6 +47,57 @@ change in `:hide-controls:`:
 
 Hidden controls do not disable their selections. Use `:theme: light` or `:theme: dark` to override the surrounding page; the default is `inherit`.
 
+`:benchmark:` must be one exact benchmark ID because it selects the benchmark shown
+by the component. When embedding a results directory, use a separate glob to reduce
+the data compiled into the static report:
+
+```rst
+.. benched:: ../benchmark-results
+   :view: trend
+   :benchmark-filter: tests/test_parse.py::*
+   :benchmark: tests/test_parse.py::test_parse|size=100
+```
+
+For a partial history, select the newest successful measurement independently for
+each benchmark:
+
+```rst
+.. benched:: ../benchmark-results
+    :selector: latest-per-benchmark
+    :view: trend
+```
+
+`latest-per-benchmark` must be the only selector. Existing benchmark, group, and
+parameter filters are applied before measurements are coalesced.
+
+To keep one definition shared between the command line and documentation, name a
+preset in `pyproject.toml` and reference it with `:preset:`:
+
+```toml
+[tool.benched.reports.solver]
+benchmark = "*test_solver*"
+metric = "median"
+view = "trend"
+latest_per_benchmark = true
+```
+
+```rst
+.. benched:: ../benchmark-results
+   :preset: solver
+```
+
+A preset may carry `benchmark`, `metric`, `view`, and either `latest` or
+`latest_per_benchmark`. The preset's `benchmark` glob becomes `:benchmark-filter:`,
+and `latest_per_benchmark` becomes `:selector: latest-per-benchmark`. Options given
+explicitly on the directive override preset values. The same preset drives
+`benched report --preset solver`. Aliases declared in `[tool.benched.aliases]` are
+applied before reports are compiled, so renamed benchmarks keep one series.
+
+Benched registers local report files and stored runs with Sphinx. Incremental builds
+therefore regenerate embedded report data after those inputs change. Remote fsspec
+sources are read when Sphinx rebuilds the document, but cannot notify Sphinx about
+external changes.
+
 This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:
 

@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="prev" title="How to migrate ASV history to Benched" href="migrate-from-asv.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>How to embed and customize a Benched report in Sphinx - Benched v0.4.0</title>
+        <title>How to embed and customize a Benched report in Sphinx - Benched v0.5.0</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+      <a href="../../index.html"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -282,9 +282,50 @@ change in <code class="docutils literal notranslate"><span class="pre">:hide-con
 </pre></div>
 </div>
 <p>Hidden controls do not disable their selections. Use <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code> to override the surrounding page; the default is <code class="docutils literal notranslate"><span class="pre">inherit</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">:benchmark:</span></code> must be one exact benchmark ID because it selects the benchmark shown
+by the component. When embedding a results directory, use a separate glob to reduce
+the data compiled into the static report:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+   <span class="nc">:view:</span> trend
+   <span class="nc">:benchmark-filter:</span> tests/test_parse.py::*
+   <span class="nc">:benchmark:</span> tests/test_parse.py::test_parse|size=100
+</pre></div>
+</div>
+<p>For a partial history, select the newest successful measurement independently for
+each benchmark:</p>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+    <span class="nc">:selector:</span> latest-per-benchmark
+    <span class="nc">:view:</span> trend
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">latest-per-benchmark</span></code> must be the only selector. Existing benchmark, group, and
+parameter filters are applied before measurements are coalesced.</p>
+<p>To keep one definition shared between the command line and documentation, name a
+preset in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and reference it with <code class="docutils literal notranslate"><span class="pre">:preset:</span></code>:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched.reports.solver]</span>
+<span class="n">benchmark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"*test_solver*"</span>
+<span class="n">metric</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"median"</span>
+<span class="n">view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"trend"</span>
+<span class="n">latest_per_benchmark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</pre></div>
+</div>
+<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmark-results
+   <span class="nc">:preset:</span> solver
+</pre></div>
+</div>
+<p>A preset may carry <code class="docutils literal notranslate"><span class="pre">benchmark</span></code>, <code class="docutils literal notranslate"><span class="pre">metric</span></code>, <code class="docutils literal notranslate"><span class="pre">view</span></code>, and either <code class="docutils literal notranslate"><span class="pre">latest</span></code> or
+<code class="docutils literal notranslate"><span class="pre">latest_per_benchmark</span></code>. The preset’s <code class="docutils literal notranslate"><span class="pre">benchmark</span></code> glob becomes <code class="docutils literal notranslate"><span class="pre">:benchmark-filter:</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">latest_per_benchmark</span></code> becomes <code class="docutils literal notranslate"><span class="pre">:selector:</span> <span class="pre">latest-per-benchmark</span></code>. Options given
+explicitly on the directive override preset values. The same preset drives
+<code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">report</span> <span class="pre">--preset</span> <span class="pre">solver</span></code>. Aliases declared in <code class="docutils literal notranslate"><span class="pre">[tool.benched.aliases]</span></code> are
+applied before reports are compiled, so renamed benchmarks keep one series.</p>
+<p>Benched registers local report files and stored runs with Sphinx. Incremental builds
+therefore regenerate embedded report data after those inputs change. Remote fsspec
+sources are read when Sphinx rebuilds the document, but cannot notify Sphinx about
+external changes.</p>
 <p>This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:</p>
-<benched-report src="../../_static/benched/reports/docs-results-cbee48470f57.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
+<benched-report src="../../_static/benched/reports/docs-results-92948bfa712c.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
 <section id="match-the-surrounding-sphinx-theme">
 <h2>Match the surrounding Sphinx theme<a class="headerlink" href="#match-the-surrounding-sphinx-theme" title="Link to this heading">¶</a></h2>
 <p>Inherited reports automatically follow Furo, Sphinx Awesome, and Shibuya in light
@@ -311,17 +352,17 @@ your Sphinx theme when an override should differ between light and dark modes.</
 
 <span class="k">def</span><span class="w"> </span><span class="nf">customize_benchmarks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="n">Report</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-    <span class="n">data</span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">data</span><span class="p">[</span><span class="s2">"benchmarks"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">benchmark</span>
-        <span class="k">for</span> <span class="n">benchmark</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">benchmark</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;internal_&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">benchmark</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s2">"benchmarks"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">benchmark</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"internal_"</span><span class="p">)</span>
     <span class="p">]</span>
-    <span class="n">data</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Internal benchmarks are hidden in this documentation.&quot;</span><span class="p">)</span>
+    <span class="n">data</span><span class="p">[</span><span class="s2">"warnings"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Internal benchmarks are hidden in this documentation."</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">data</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
-    <span class="n">app</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;benched-process-report&quot;</span><span class="p">,</span> <span class="n">customize_benchmarks</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"benched-process-report"</span><span class="p">,</span> <span class="n">customize_benchmarks</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The callback receives the compiled <code class="docutils literal notranslate"><span class="pre">Report</span></code> and current directive options. Return a
@@ -336,8 +377,8 @@ Sphinx build.</p>
 <p>Use the options argument when different directives need different presentation:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">customize_benchmarks</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">report</span><span class="p">,</span> <span class="n">options</span><span class="p">):</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;overview&quot;</span><span class="p">:</span>
-        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;warnings&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Overview values are documentation-specific.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">options</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"view"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"overview"</span><span class="p">:</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">"warnings"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Overview values are documentation-specific."</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">data</span>
 </pre></div>
 </div>
@@ -411,13 +452,13 @@ composed.</p>
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
+</div><script src="../../_static/documentation_options.js?v=1dd76d02"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="../../_static/benched/benched.js?v=2a665097"></script>
+    <script type="module" src="../../_static/benched/benched.js?v=287d4e6a"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
     </body>

@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Benched report example" href="docs/overview.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Benched v0.4.0</title>
+        <title>Benched v0.5.0</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+      <a href="#"><div class="brand">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
   
-  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  <span class="sidebar-brand-text">Benched <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.5.0</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -277,18 +277,25 @@ least five with its standard settings). <code class="docutils literal notranslat
 one round and caps benchmark time at 0.05 seconds, so quick runs are not guaranteed to
 contain multiple rounds. Saved statistics retain <code class="docutils literal notranslate"><span class="pre">rounds</span></code> and <code class="docutils literal notranslate"><span class="pre">iterations</span></code>.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched]</span>
-<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;benchmarks&quot;</span><span class="p">]</span>
-<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.benched/results&quot;</span>
+<span class="n">benchmark_paths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"benchmarks"</span><span class="p">]</span>
+<span class="n">results_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".benched/results"</span>
 
 <span class="k">[tool.benched.subject]</span>
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-package&quot;</span>
-<span class="n">distribution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-package&quot;</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"my-package"</span>
+<span class="n">distribution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"my-package"</span>
+
+<span class="k">[tool.benched.env]</span>
+<span class="n">MKL_NUM_THREADS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span>
+<span class="n">OMP_NUM_THREADS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span>
+<span class="n">OPENBLAS_NUM_THREADS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"1"</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">results_dir</span></code> accepts any fsspec URL. Local files need no additional configuration;
 remote protocols need their normal backend package and credentials. Backend options
 can be supplied in <code class="docutils literal notranslate"><span class="pre">[tool.benched.storage_options]</span></code>, but environment- or profile-based
 credentials are preferable to secrets in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">[tool.benched.env]</span></code> values override the parent environment for benchmark execution
+and collection without modifying the parent process.</p>
 <p>Report assets use Web Awesome for UI primitives and Lightweight Charts for plots. The
 renderer-neutral report pipeline feeds terminal, JSON, HTML, and third-party
 reporters.</p>
@@ -332,6 +339,17 @@ pytest-benchmark history</span></a>.</p>
 result directories without installing or executing ASV. See <a class="reference internal" href="docs/how-to/migrate-from-asv.html"><span class="std std-doc">How to migrate ASV
 history to Benched</span></a> for same-project and separate
 suite/subject examples.</p>
+<p>Renamed benchmarks and imported histories with different identities can be joined
+with a declarative alias map. Aliases map the unparameterized benchmark identity and
+parameter names, and are applied when history is read for query, report, export, and
+Sphinx embedding; stored run documents are never rewritten:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched.aliases.benchmarks]</span>
+<span class="s2">"solver.SolverSuite.time_solve"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"benchmarks/test_solver.py::test_solve"</span>
+
+<span class="k">[tool.benched.aliases.parameters]</span>
+<span class="n">problem_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"n_assets"</span>
+</pre></div>
+</div>
 </section>
 <section id="query-and-compare">
 <h2>Query and compare<a class="headerlink" href="#query-and-compare" title="Link to this heading">¶</a></h2>
@@ -339,13 +357,35 @@ suite/subject examples.</p>
 subject version, branch, label value, <code class="docutils literal notranslate"><span class="pre">KEY=VALUE</span></code> label, <code class="docutils literal notranslate"><span class="pre">latest</span></code>, or <code class="docutils literal notranslate"><span class="pre">previous</span></code>.
 <code class="docutils literal notranslate"><span class="pre">latest</span></code> and <code class="docutils literal notranslate"><span class="pre">previous</span></code> select only successful runs after filters are applied.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>benched<span class="w"> </span><span class="nb">history</span><span class="w"> </span>--machine<span class="w"> </span>ci<span class="w"> </span>--python<span class="w"> </span><span class="m">3</span>.12.13
-benched<span class="w"> </span>show<span class="w"> </span>latest<span class="w"> </span>--benchmark<span class="w"> </span><span class="s2">&quot;*test_parse*&quot;</span><span class="w"> </span>--parameter<span class="w"> </span><span class="nv">size</span><span class="o">=</span><span class="m">100</span>
+benched<span class="w"> </span>show<span class="w"> </span>latest<span class="w"> </span>--benchmark<span class="w"> </span><span class="s2">"*test_parse*"</span><span class="w"> </span>--parameter<span class="w"> </span><span class="nv">size</span><span class="o">=</span><span class="m">100</span>
 benched<span class="w"> </span>compare<span class="w"> </span>previous<span class="w"> </span>latest<span class="w"> </span>--metric<span class="w"> </span>median
 benched<span class="w"> </span>compare<span class="w"> </span>previous<span class="w"> </span>latest<span class="w"> </span>--fail-if<span class="w"> </span>median:10%
+benched<span class="w"> </span>compare<span class="w"> </span>previous<span class="w"> </span>latest<span class="w"> </span>--fail-if<span class="w"> </span>peak_memory:10%
+benched<span class="w"> </span>compare<span class="w"> </span>latest<span class="w"> </span>--baseline<span class="w"> </span><span class="nv">solver</span><span class="o">=</span>mosek_qp
+benched<span class="w"> </span>report<span class="w"> </span>--latest-per-benchmark<span class="w"> </span>--format<span class="w"> </span>html
+benched<span class="w"> </span><span class="nb">export</span><span class="w"> </span>--format<span class="w"> </span>csv<span class="w"> </span>--output<span class="w"> </span>build/history.csv
+benched<span class="w"> </span>compact<span class="w"> </span>--keep<span class="w"> </span><span class="m">20</span>
 </pre></div>
 </div>
-<p>Available comparison metrics are <code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">max</span></code>, and <code class="docutils literal notranslate"><span class="pre">ops</span></code>. Percentage
-and absolute gates fail only when regression exceeds threshold; equality is allowed.
+<p><code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">compare</span> <span class="pre">RUN</span> <span class="pre">--baseline</span> <span class="pre">KEY=VALUE</span></code> compares within one run instead of across
+two. Measurements sharing every parameter except <code class="docutils literal notranslate"><span class="pre">KEY</span></code> are paired against the
+measurement whose <code class="docutils literal notranslate"><span class="pre">KEY</span></code> equals <code class="docutils literal notranslate"><span class="pre">VALUE</span></code>, producing per-variant ratios grouped by the
+remaining parameters.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">export</span></code> writes matching history as one CSV or Parquet row per measurement.
+Parameters and statistics become columns; rows stay rectangular across benchmarks
+with different parameter sets, with nulls where a column does not apply. Parquet
+output requires <code class="docutils literal notranslate"><span class="pre">pyarrow</span></code> (<code class="docutils literal notranslate"><span class="pre">benched[export]</span></code>). The same table is available in Python
+via <code class="docutils literal notranslate"><span class="pre">benched.export.tabulate</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">compact</span> <span class="pre">--keep</span> <span class="pre">N</span></code> bounds history growth by consolidating all but the newest
+<code class="docutils literal notranslate"><span class="pre">N</span></code> raw run documents into a gzip-compressed <code class="docutils literal notranslate"><span class="pre">archive.json.gz</span></code> beside them. Archived
+runs keep full fidelity and remain visible to every query, report, and export.</p>
+<p>Each <code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">run</span></code> records the pytest subprocess’s peak resident set size as a
+<code class="docutils literal notranslate"><span class="pre">peak_memory</span></code> measurement in bytes. It is available to reports and <code class="docutils literal notranslate"><span class="pre">--metric</span></code>
+without a benchmark-side sampling fixture. All benchmarks executed in one pytest
+subprocess share that process peak; this measures resident memory, not allocations.</p>
+<p>Available comparison metrics are <code class="docutils literal notranslate"><span class="pre">median</span></code>, <code class="docutils literal notranslate"><span class="pre">mean</span></code>, <code class="docutils literal notranslate"><span class="pre">min</span></code>, <code class="docutils literal notranslate"><span class="pre">max</span></code>, <code class="docutils literal notranslate"><span class="pre">ops</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">peak_memory</span></code>. Percentage and absolute gates fail only when regression exceeds
+threshold; equality is allowed.
 Comparison exit codes are <code class="docutils literal notranslate"><span class="pre">0</span></code> for success, <code class="docutils literal notranslate"><span class="pre">1</span></code> for gated regression, <code class="docutils literal notranslate"><span class="pre">2</span></code> for query or
 usage errors, <code class="docutils literal notranslate"><span class="pre">3</span></code> for incompatible data, and <code class="docutils literal notranslate"><span class="pre">4</span></code> for an explicitly selected failed
 benchmark run. <code class="docutils literal notranslate"><span class="pre">--allow-mismatch</span></code> permits deliberate machine or environment mismatch
@@ -358,6 +398,21 @@ Reports default to successful runs and terminal output. Repeat <code class="docu
 <code class="docutils literal notranslate"><span class="pre">terminal</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">html</span></code>, or installed third-party reporters. JSON and HTML output
 is written beneath the local <code class="docutils literal notranslate"><span class="pre">--output</span></code> directory; raw history remains on its
 configured fsspec backend.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">--latest-per-benchmark</span></code> to coalesce partial histories. For each matching
+benchmark, the report keeps its measurement from the newest successful run while
+retaining that run’s metadata and provenance. This mode cannot be combined with
+explicit run selectors or <code class="docutils literal notranslate"><span class="pre">--latest</span></code>.</p>
+<p>Recurring report definitions can be named once in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> and referenced
+with <code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">report</span> <span class="pre">--preset</span> <span class="pre">NAME</span></code> or the Sphinx <code class="docutils literal notranslate"><span class="pre">:preset:</span></code> option. A preset may
+carry <code class="docutils literal notranslate"><span class="pre">benchmark</span></code>, <code class="docutils literal notranslate"><span class="pre">metric</span></code>, <code class="docutils literal notranslate"><span class="pre">view</span></code>, and either <code class="docutils literal notranslate"><span class="pre">latest</span></code> or <code class="docutils literal notranslate"><span class="pre">latest_per_benchmark</span></code>;
+explicit command-line flags and directive options override preset values:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[tool.benched.reports.solver]</span>
+<span class="n">benchmark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"*test_solver*"</span>
+<span class="n">metric</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"median"</span>
+<span class="n">view</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"trend"</span>
+<span class="n">latest_per_benchmark</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+</pre></div>
+</div>
 <p>HTML output contains <code class="docutils literal notranslate"><span class="pre">index.html</span></code>, renderer-neutral report JSON, and packaged JS/CSS.
 Preview it with <code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">serve</span></code>, which binds to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> and a dynamically selected
 port by default. The preview server is read-only.</p>
@@ -385,18 +440,18 @@ current command.</p>
 <p>Generated reports can be embedded without a Python runtime. Load the packaged assets
 once, then point each component at report JSON. Components maintain independent view,
 metric, benchmark, machine, Python, and x-axis filters.</p>
-<div class="highlight-html notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&quot;stylesheet&quot;</span> <span class="na">href</span><span class="o">=</span><span class="s">&quot;assets/benched.css&quot;</span><span class="p">&gt;</span>
-<span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&quot;module&quot;</span> <span class="na">src</span><span class="o">=</span><span class="s">&quot;assets/benched.js&quot;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+<div class="highlight-html notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">"stylesheet"</span> <span class="na">href</span><span class="o">=</span><span class="s">"assets/benched.css"</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">"module"</span> <span class="na">src</span><span class="o">=</span><span class="s">"assets/benched.js"</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 <span class="p">&lt;</span><span class="nt">benched-report</span>
-  <span class="na">src</span><span class="o">=</span><span class="s">&quot;data/report.json&quot;</span>
-  <span class="na">view</span><span class="o">=</span><span class="s">&quot;trend&quot;</span>
-  <span class="na">metric</span><span class="o">=</span><span class="s">&quot;median&quot;</span>
-  <span class="na">x-axis</span><span class="o">=</span><span class="s">&quot;version&quot;</span>
-  <span class="na">machine</span><span class="o">=</span><span class="s">&quot;linux,macos&quot;</span>
-  <span class="na">python</span><span class="o">=</span><span class="s">&quot;3.11,3.12&quot;</span>
-  <span class="na">memory</span><span class="o">=</span><span class="s">&quot;16,32&quot;</span>
-  <span class="na">hide-controls</span><span class="o">=</span><span class="s">&quot;view,metric,x-axis,machine,python,memory&quot;</span>
-  <span class="na">data-theme</span><span class="o">=</span><span class="s">&quot;inherit&quot;</span>
+  <span class="na">src</span><span class="o">=</span><span class="s">"data/report.json"</span>
+  <span class="na">view</span><span class="o">=</span><span class="s">"trend"</span>
+  <span class="na">metric</span><span class="o">=</span><span class="s">"median"</span>
+  <span class="na">x-axis</span><span class="o">=</span><span class="s">"version"</span>
+  <span class="na">machine</span><span class="o">=</span><span class="s">"linux,macos"</span>
+  <span class="na">python</span><span class="o">=</span><span class="s">"3.11,3.12"</span>
+  <span class="na">memory</span><span class="o">=</span><span class="s">"16,32"</span>
+  <span class="na">hide-controls</span><span class="o">=</span><span class="s">"view,metric,x-axis,machine,python,memory"</span>
+  <span class="na">data-theme</span><span class="o">=</span><span class="s">"inherit"</span>
 <span class="p">&gt;&lt;/</span><span class="nt">benched-report</span><span class="p">&gt;</span>
 </pre></div>
 </div>
@@ -425,7 +480,7 @@ preference until the report’s theme button stores a local override. Set
 a prepared report JSON file or an existing results directory. Documentation builds
 never execute benchmarks.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># conf.py</span>
-<span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;benched.sphinx&quot;</span><span class="p">]</span>
+<span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"benched.sphinx"</span><span class="p">]</span>
 </pre></div>
 </div>
 <div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><span class="p">..</span> <span class="ow">benched</span><span class="p">::</span> ../benchmarks/report.json
@@ -439,8 +494,12 @@ never execute benchmarks.</p>
 </pre></div>
 </div>
 <p>For a results directory, omit <code class="docutils literal notranslate"><span class="pre">:selector:</span></code> to include all successful runs or provide
-space-separated selectors such as <code class="docutils literal notranslate"><span class="pre">:selector:</span> <span class="pre">previous</span> <span class="pre">latest</span></code>. JSON and packaged
-assets are copied beneath Sphinx’s <code class="docutils literal notranslate"><span class="pre">_static/benched</span></code> output with page-relative URLs.
+space-separated selectors such as <code class="docutils literal notranslate"><span class="pre">:selector:</span> <span class="pre">previous</span> <span class="pre">latest</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">:benchmark-filter:</span> <span class="pre">*test_parse*</span></code> to limit the benchmarks compiled from stored runs.
+<code class="docutils literal notranslate"><span class="pre">:benchmark:</span></code> takes one exact benchmark ID and preselects it in the embedded component;
+it does not filter report compilation. JSON and packaged assets are copied beneath
+Sphinx’s <code class="docutils literal notranslate"><span class="pre">_static/benched</span></code> output with page-relative URLs. Local report files and
+results directories are rebuilt when their contents change.
 Sphinx embeds use <code class="docutils literal notranslate"><span class="pre">theme=&quot;inherit&quot;</span></code> by default; set <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code>
 to override the surrounding page.
 The <code class="docutils literal notranslate"><span class="pre">benched-process-report</span></code> event can return a validated replacement report before
@@ -500,13 +559,13 @@ Sphinx</span></a>.</p>
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=6c02275b"></script>
+</div><script src="_static/documentation_options.js?v=1dd76d02"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="_static/benched/benched.js?v=2a665097"></script>
+    <script type="module" src="_static/benched/benched.js?v=287d4e6a"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script src="_static/js/custom.js?v=956e5d78"></script>
     </body>
