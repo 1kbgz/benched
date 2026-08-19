@@ -1,6 +1,6 @@
 {
   "name": "benched",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Easy benchmarking",
   "repository": "git@github.com:1kbgz/benched.git",
   "author": "the benched authors <dev@1kbgz.com>",
