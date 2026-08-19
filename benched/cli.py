@@ -9,25 +9,28 @@ from pathlib import Path
 
 from .asv import AsvImportError, import_asv_results, infer_asv_identities
 from .compare import (
+    SUPPORTED_METRICS,
     BenchmarkRunError,
     CompareError,
     CompatibilityError,
     RunComparison,
     ThresholdError,
     ThresholdEvaluationError,
+    compare_baseline,
     compare_runs,
     parse_threshold,
     regression_gate,
 )
-from .config import ConfigError, load_config
+from .config import Config, ConfigError, load_config
+from .export import ExportError, tabulate, write_csv, write_parquet
 from .hooks import PluginError
 from .pytest_import import PytestImportError, PytestImportOptions, import_pytest_benchmarks
-from .query import QueryError, RunFilters, filter_measurements, filter_runs, resolve_selector
+from .query import QueryError, RunFilters, apply_aliases, filter_measurements, filter_runs, latest_measurements, resolve_selector
 from .report import ReportError, generate_report
 from .reporters import ReporterError
 from .runner import RunnerError, collect_benchmarks, run_benchmarks
 from .serve import ServeError, serve
-from .storage import StorageError, read_runs
+from .storage import StorageError, compact_runs, read_runs
 
 EXIT_REGRESSION = 1
 EXIT_USAGE = 2
@@ -37,7 +40,9 @@ EXIT_BENCHMARK_FAILED = 4
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="benched", description="Run and inspect durable pytest benchmarks")
-    parser.add_argument("command", choices=("run", "list", "history", "show", "compare", "report", "serve", "import-asv", "import-pytest"))
+    parser.add_argument(
+        "command", choices=("run", "list", "history", "show", "compare", "report", "export", "compact", "serve", "import-asv", "import-pytest")
+    )
     return parser
 
 
@@ -73,18 +78,26 @@ def _add_filters(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--parameter", action="append", default=[], metavar="KEY=VALUE")
 
 
+def _parameter_value(raw: str) -> object:
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+
 def _parameter_filters(values: Sequence[str]) -> dict[str, object]:
     parameters: dict[str, object] = {}
     for value in values:
         key, separator, raw_item = value.partition("=")
         if not separator or not key:
             raise QueryError(f"parameter must use KEY=VALUE: {value!r}")
-        try:
-            item = json.loads(raw_item)
-        except json.JSONDecodeError:
-            item = raw_item
-        parameters[key] = item
+        parameters[key] = _parameter_value(raw_item)
     return parameters
+
+
+def _read_runs(config: Config):
+    stored_runs = read_runs(config.results_dir, storage_options=config.storage_options)
+    return apply_aliases(stored_runs, benchmarks=config.aliases.benchmarks, parameters=config.aliases.parameters)
 
 
 def _filters(options: argparse.Namespace) -> RunFilters:
@@ -153,7 +166,7 @@ def _history(arguments: list[str]) -> int:
     _add_filters(parser)
     options = parser.parse_args(arguments)
     config = _config(options)
-    all_runs = read_runs(config.results_dir, storage_options=config.storage_options)
+    all_runs = _read_runs(config)
     filters = _filters(options)
     if options.selectors:
         selected = [resolve_selector(all_runs, selector, filters=filters) for selector in options.selectors]
@@ -175,7 +188,7 @@ def _show(arguments: list[str]) -> int:
     options = parser.parse_args(arguments)
     config = _config(options)
     filters = _filters(options)
-    stored = resolve_selector(read_runs(config.results_dir, storage_options=config.storage_options), options.run, filters=filters)
+    stored = resolve_selector(_read_runs(config), options.run, filters=filters)
     run = replace(stored.run, measurements=filter_measurements(stored.run, filters))
     print(json.dumps(run.to_dict(), indent=2, ensure_ascii=True))
     return 0
@@ -185,8 +198,8 @@ def _display_number(value: float | None) -> str:
     return "-" if value is None else f"{value:.6g}"
 
 
-def _print_comparison(comparison: RunComparison) -> None:
-    print(f"base {comparison.base_run_id}  head {comparison.head_run_id}  metric {comparison.metric}")
+def _print_comparison(comparison: RunComparison, *, header: str | None = None) -> None:
+    print(header or f"base {comparison.base_run_id}  head {comparison.head_run_id}  metric {comparison.metric}")
     print(f"{'status':<13} {'base':>12} {'head':>12} {'delta':>12} {'change':>10}  benchmark")
     for difference in comparison.differences:
         percent = "-" if difference.percent is None else f"{difference.percent:+.2f}%"
@@ -202,16 +215,33 @@ def _print_comparison(comparison: RunComparison) -> None:
 def _compare(arguments: list[str]) -> int:
     parser = _config_parser("benched compare")
     parser.add_argument("base")
-    parser.add_argument("head")
-    parser.add_argument("--metric", choices=("median", "mean", "min", "max", "ops"))
+    parser.add_argument("head", nargs="?")
+    parser.add_argument("--metric", choices=SUPPORTED_METRICS)
+    parser.add_argument("--baseline", metavar="KEY=VALUE")
     parser.add_argument("--fail-if", metavar="[METRIC:]THRESHOLD[%]")
     parser.add_argument("--allow-mismatch", action="store_true")
     _add_filters(parser)
     options = parser.parse_args(arguments)
     config = _config(options)
     filters = _filters(options)
-    stored_runs = read_runs(config.results_dir, storage_options=config.storage_options)
+    stored_runs = _read_runs(config)
     selector_filters = replace(filters, benchmark=None, group=None, parameters={})
+    if options.baseline is not None:
+        if options.head is not None:
+            raise CompareError("--baseline compares within a single run; pass one run selector")
+        if options.fail_if is not None:
+            raise CompareError("--baseline cannot be combined with --fail-if")
+        key, separator, raw_value = options.baseline.partition("=")
+        if not separator or not key:
+            raise CompareError(f"baseline must use KEY=VALUE: {options.baseline!r}")
+        run = resolve_selector(stored_runs, options.base, filters=selector_filters).run
+        comparison = compare_baseline(run, key=key, value=_parameter_value(raw_value), metric=options.metric or "median", filters=filters)
+        _print_comparison(comparison, header=f"run {run.run_id}  baseline {options.baseline}  metric {comparison.metric}")
+        if any(difference.status == "incompatible" for difference in comparison.differences):
+            return EXIT_INCOMPATIBLE
+        return 0
+    if options.head is None:
+        raise CompareError("compare requires BASE and HEAD selectors, or a single run with --baseline KEY=VALUE")
     base = resolve_selector(stored_runs, options.base, filters=selector_filters).run
     head = resolve_selector(stored_runs, options.head, filters=selector_filters).run
 
@@ -233,20 +263,38 @@ def _report(arguments: list[str]) -> int:
     parser.add_argument("selectors", nargs="*")
     parser.add_argument("--format", action="append", default=[], dest="formats")
     parser.add_argument("--output", default="build/benched")
-    parser.add_argument("--metric", choices=("median", "mean", "min", "max", "ops"), default="median")
+    parser.add_argument("--metric", choices=SUPPORTED_METRICS)
+    parser.add_argument("--preset")
     parser.add_argument("--latest", type=int, metavar="N")
+    parser.add_argument("--latest-per-benchmark", action="store_true")
     _add_filters(parser)
     options = parser.parse_args(arguments)
+    config = _config(options)
+    if options.preset is not None:
+        preset = config.reports.get(options.preset)
+        if preset is None:
+            available = ", ".join(sorted(config.reports)) or "none"
+            raise ReportError(f"unknown report preset {options.preset!r}; available: {available}")
+        options.benchmark = options.benchmark or preset.benchmark
+        options.metric = options.metric or preset.metric
+        if options.latest is None and not options.latest_per_benchmark and not options.selectors:
+            options.latest = preset.latest
+            options.latest_per_benchmark = preset.latest_per_benchmark
     if options.latest is not None and options.latest < 1:
         raise ReportError("--latest must be at least 1")
     if options.latest is not None and options.selectors:
         raise ReportError("--latest cannot be combined with explicit selectors")
-    config = _config(options)
+    if options.latest_per_benchmark and options.latest is not None:
+        raise ReportError("--latest-per-benchmark cannot be combined with --latest")
+    if options.latest_per_benchmark and options.selectors:
+        raise ReportError("--latest-per-benchmark cannot be combined with explicit selectors")
     filters = _filters(options)
     if not filters.statuses:
         filters = replace(filters, statuses=("success",))
-    stored_runs = read_runs(config.results_dir, storage_options=config.storage_options)
-    if options.selectors:
+    stored_runs = _read_runs(config)
+    if options.latest_per_benchmark:
+        selected_runs = [stored.run for stored in latest_measurements(stored_runs, filters)]
+    elif options.selectors:
         selected = [resolve_selector(stored_runs, selector, filters=filters) for selector in options.selectors]
         selected_runs = list({stored.run.run_id: stored.run for stored in selected}.values())
     else:
@@ -262,11 +310,50 @@ def _report(arguments: list[str]) -> int:
         filters=filters,
         reporter_names=tuple(options.formats or ("terminal",)),
         output=output,
-        metric=options.metric,
+        metric=options.metric or "median",
         stream=sys.stdout,
     )
     for artifact in artifacts:
         print(f"wrote {artifact.kind} {artifact.path}")
+    return 0
+
+
+def _export(arguments: list[str]) -> int:
+    parser = _config_parser("benched export")
+    parser.add_argument("--format", choices=("csv", "parquet"), default="csv")
+    parser.add_argument("--output", metavar="PATH")
+    _add_filters(parser)
+    options = parser.parse_args(arguments)
+    config = _config(options)
+    filters = _filters(options)
+    if not filters.statuses:
+        filters = replace(filters, statuses=("success",))
+    runs = [stored.run for stored in filter_runs(_read_runs(config), filters)]
+    columns, rows = tabulate(runs, filters=filters)
+    output = Path(options.output) if options.output else Path("build/benched") / f"export.{options.format}"
+    if not output.is_absolute():
+        output = config.project_root / output
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if options.format == "csv":
+        write_csv(output, columns, rows)
+    else:
+        write_parquet(output, columns, rows)
+    print(f"wrote {options.format} {output} ({len(rows)} rows)")
+    return 0
+
+
+def _compact(arguments: list[str]) -> int:
+    parser = _config_parser("benched compact")
+    parser.add_argument("--keep", type=int, required=True, metavar="N", help="number of newest runs left as raw documents")
+    options = parser.parse_args(arguments)
+    if options.keep < 0:
+        raise StorageError("--keep must be non-negative")
+    config = _config(options)
+    archived, location = compact_runs(config.results_dir, keep=options.keep, storage_options=config.storage_options)
+    if archived:
+        print(f"archived {archived} runs into {location}")
+    else:
+        print("nothing to compact")
     return 0
 
 
@@ -374,6 +461,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "show": _show,
             "compare": _compare,
             "report": _report,
+            "export": _export,
+            "compact": _compact,
             "serve": _serve,
             "import-asv": _import_asv,
             "import-pytest": _import_pytest,
@@ -389,6 +478,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         AsvImportError,
         CompareError,
         ConfigError,
+        ExportError,
         PluginError,
         PytestImportError,
         QueryError,

@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .identity import machine_fingerprint
 from .ingest import IngestError, normalize_pytest_benchmark
 from .model import EnvironmentInfo, Identity, MachineInfo, Provenance, Run
 from .storage import read_runs, save_run
@@ -134,7 +135,15 @@ def convert_pytest_benchmark(
     python_version = _machine_value(machine_info, "python_version", source_path)
     system = _machine_value(machine_info, "system", source_path)
     architecture = _machine_value(machine_info, "machine", source_path)
-    machine = MachineInfo(id=machine_id, fingerprint=_fingerprint(machine_metadata), metadata=machine_metadata)
+    machine = MachineInfo(
+        id=machine_id,
+        fingerprint=machine_fingerprint(
+            architecture=machine_metadata.get("machine"),
+            cpu=machine_metadata.get("cpu"),
+            cpu_count=machine_metadata.get("cpu_count", machine_metadata.get("num_cpu")),
+        ),
+        metadata=machine_metadata,
+    )
     environment_values = {
         "python_implementation": python_implementation,
         "python_version": python_version,

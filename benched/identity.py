@@ -91,6 +91,29 @@ def _fingerprint(value: Mapping[str, Any]) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def _hardware_value(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = " ".join(str(value).split()).casefold()
+    return normalized or None
+
+
+def machine_fingerprint(*, architecture: object = None, cpu: object = None, cpu_count: object = None) -> str:
+    hardware: dict[str, str | int] = {}
+    if (normalized := _hardware_value(architecture)) is not None:
+        hardware["architecture"] = normalized
+    if (normalized := _hardware_value(cpu)) is not None:
+        hardware["cpu"] = normalized
+    if (normalized := _hardware_value(cpu_count)) is not None:
+        try:
+            numeric_count = float(normalized)
+        except ValueError:
+            hardware["cpu_count"] = normalized
+        else:
+            hardware["cpu_count"] = int(numeric_count) if numeric_count.is_integer() else normalized
+    return _fingerprint(hardware)
+
+
 def _total_memory_bytes() -> int | None:
     try:
         pages = os.sysconf("SC_PHYS_PAGES")
@@ -118,7 +141,11 @@ def resolve_machine(machine_id: str | None = None, *, labels: Mapping[str, str] 
         machine_metadata["memory_gib"] = _memory_gib(total_memory)
     return MachineInfo(
         id=machine_id or platform.node() or "local",
-        fingerprint=_fingerprint(machine_metadata),
+        fingerprint=machine_fingerprint(
+            architecture=machine_metadata["architecture"],
+            cpu=machine_metadata["processor"],
+            cpu_count=machine_metadata["cpu_count"],
+        ),
         metadata=machine_metadata,
         labels=dict(labels or {}),
     )

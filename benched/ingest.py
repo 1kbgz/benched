@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from typing import Any
-from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
 
 from . import __version__
 from .model import EnvironmentInfo, Identity, MachineInfo, Measurement, Provenance, Run, ToolInfo
+from .query import PEAK_MEMORY_SUFFIX, encode_benchmark_id
 
 
 class IngestError(ValueError):
@@ -30,13 +29,7 @@ def _string(value: Any, field_name: str) -> str:
 
 def _benchmark_id(nodeid: str, parameters: Mapping[str, Any]) -> str:
     base = nodeid.rsplit("[", 1)[0] if parameters and nodeid.endswith("]") else nodeid
-    if not parameters:
-        return base
-    encoded = "&".join(
-        f"{quote(str(name), safe='')}={quote(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True), safe='')}"
-        for name, value in sorted(parameters.items())
-    )
-    return f"{base}|{encoded}"
+    return encode_benchmark_id(base, parameters)
 
 
 def normalize_pytest_benchmark(
@@ -81,20 +74,37 @@ def normalize_pytest_benchmark(
         parameter_id = benchmark.get("param")
         if parameter_id is not None and not isinstance(parameter_id, str):
             parameter_id = str(parameter_id)
-        measurements.append(
-            Measurement(
-                benchmark_id=_benchmark_id(nodeid, parameters),
-                nodeid=nodeid,
-                name=name,
-                group=group,
-                parameter_id=parameter_id,
-                parameters=parameters,
-                options=dict(_mapping(benchmark.get("options") or {}, f"benchmarks[{index}].options")),
-                extra_info=dict(_mapping(benchmark.get("extra_info") or {}, f"benchmarks[{index}].extra_info")),
-                stats=raw_stats,
-                samples=tuple(float(item) for item in raw_samples) if save_samples and raw_samples is not None else None,
-            )
+        benchmark_id = _benchmark_id(nodeid, parameters)
+        options = dict(_mapping(benchmark.get("options") or {}, f"benchmarks[{index}].options"))
+        extra_info = dict(_mapping(benchmark.get("extra_info") or {}, f"benchmarks[{index}].extra_info"))
+        peak_memory = extra_info.pop("peak_memory_bytes", None)
+        timing = Measurement(
+            benchmark_id=benchmark_id,
+            nodeid=nodeid,
+            name=name,
+            group=group,
+            parameter_id=parameter_id,
+            parameters=parameters,
+            options=options,
+            extra_info=extra_info,
+            stats=raw_stats,
+            samples=tuple(float(item) for item in raw_samples) if save_samples and raw_samples is not None else None,
         )
+        measurements.append(timing)
+        if isinstance(peak_memory, (int, float)) and not isinstance(peak_memory, bool) and peak_memory >= 0:
+            measurements.append(
+                Measurement(
+                    benchmark_id=f"{benchmark_id}{PEAK_MEMORY_SUFFIX}",
+                    nodeid=nodeid,
+                    name=f"{name} peak memory",
+                    group=group,
+                    parameter_id=parameter_id,
+                    parameters=parameters,
+                    unit="bytes",
+                    options=options,
+                    stats={"peak_memory": peak_memory},
+                )
+            )
 
     if exit_code == 0:
         status = "success"

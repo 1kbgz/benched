@@ -11,10 +11,11 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 from . import __version__
+from .identity import machine_fingerprint
 from .model import EnvironmentInfo, Identity, MachineInfo, Measurement, Provenance, Run, ToolInfo
+from .query import encode_benchmark_id
 from .storage import read_runs, save_run
 
 
@@ -167,16 +168,21 @@ def _fingerprint(value: Any) -> str:
 
 def _memory_gib(value: Any) -> float | None:
     if isinstance(value, (int, float)) and not isinstance(value, bool):
-        gib = float(value) / 1024**3
+        amount = float(value)
+        unit = None
     elif isinstance(value, str):
-        match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([KMGT]?)(?:I?B)?\s*", value, re.IGNORECASE)
+        match = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([KMGT]?)(I?B)?\s*", value, re.IGNORECASE)
         if match is None:
             return None
         amount = float(match.group(1))
-        scale = {"": 1 / 1024**3, "K": 1 / 1024**2, "M": 1 / 1024, "G": 1, "T": 1024}[match.group(2).upper()]
-        gib = amount * scale
+        unit = match.group(2).upper() if match.group(2) or match.group(3) else None
     else:
         return None
+    if unit is None:
+        gib = amount / (1024**2 if amount < 1024**3 else 1024**3)
+    else:
+        scale = {"": 1 / 1024**3, "K": 1 / 1024**2, "M": 1 / 1024, "G": 1, "T": 1024}[unit]
+        gib = amount * scale
     return math.floor(gib * 2 + 0.5) / 2
 
 
@@ -193,16 +199,6 @@ def _parameter(value: Any) -> Any:
         return ast.literal_eval(value)
     except (SyntaxError, ValueError):
         return value
-
-
-def _benchmark_id(name: str, parameters: dict[str, Any]) -> str:
-    if not parameters:
-        return name
-    encoded = "&".join(
-        f"{quote(key, safe='')}={quote(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True), safe='')}"
-        for key, value in sorted(parameters.items())
-    )
-    return f"{name}|{encoded}"
 
 
 def _row(document: dict[str, Any], name: str, raw: Any, version: int) -> dict[str, Any]:
@@ -268,6 +264,9 @@ def _measurements(document: dict[str, Any], benchmarks: dict[str, Any], version:
     measurements: list[Measurement] = []
     warnings: list[str] = []
     for name in sorted(raw_results):
+        if name not in benchmarks:
+            warnings.append(f"skipped ASV result {name!r} because its benchmark metadata is missing")
+            continue
         metadata = _mapping(benchmarks.get(name), f"ASV benchmark metadata for {name!r}")
         names = metadata.get("param_names", [])
         row = _row(document, name, raw_results[name], version)
@@ -294,7 +293,7 @@ def _measurements(document: dict[str, Any], benchmarks: dict[str, Any], version:
             options = {key: value for key, value in metadata.items() if key not in {"code", "name", "param_names", "params", "unit", "version"}}
             measurements.append(
                 Measurement(
-                    benchmark_id=_benchmark_id(name, parameters),
+                    benchmark_id=encode_benchmark_id(name, parameters),
                     nodeid=name,
                     name=name,
                     group=name.rpartition(".")[0] or None,
@@ -407,7 +406,15 @@ def convert_asv_result(
         exit_code=0 if measurements and unavailable < len(measurements) else 1,
         suite=Identity(name=identities.suite_name, repository=identities.suite_repository, revision=commit),
         subject=Identity(name=subject_name, repository=identities.subject_repository, version=subject_version, revision=subject_revision),
-        machine=MachineInfo(id=machine, fingerprint=_fingerprint(metadata), metadata=metadata),
+        machine=MachineInfo(
+            id=machine,
+            fingerprint=machine_fingerprint(
+                architecture=metadata.get("arch"),
+                cpu=metadata.get("cpu"),
+                cpu_count=metadata.get("num_cpu"),
+            ),
+            metadata=metadata,
+        ),
         environment=EnvironmentInfo(
             fingerprint=_fingerprint(environment_value),
             python_implementation="PyPy" if "pypy" in raw_python.lower() else "CPython",

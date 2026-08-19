@@ -5,12 +5,14 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pluggy
+import psutil
 
 from .config import Config
 from .hooks import BenchmarkHookContext, PluginError, RunHookContext, call_hook, create_plugin_manager
@@ -53,6 +55,37 @@ def _pytest_arguments(config: Config, arguments: tuple[str, ...]) -> list[str]:
     return result
 
 
+def _subprocess_environment(config: Config) -> dict[str, str]:
+    environment = dict(os.environ)
+    environment.update(config.env)
+    return environment
+
+
+def _run_with_peak_memory(arguments: list[str], *, cwd: Path, env: dict[str, str]) -> tuple[int, int]:
+    parent = psutil.Process()
+    peak = 0
+    stop = threading.Event()
+
+    def sample() -> None:
+        nonlocal peak
+        while not stop.wait(0.001):
+            try:
+                samples = [child.memory_info().rss for child in parent.children(recursive=True)]
+                if samples:
+                    peak = max(peak, *samples)
+            except psutil.NoSuchProcess:
+                continue
+
+    sampler = threading.Thread(target=sample, daemon=True)
+    sampler.start()
+    try:
+        exit_code = subprocess.run(arguments, cwd=cwd, env=env, check=False).returncode
+    finally:
+        stop.set()
+        sampler.join()
+    return exit_code, peak
+
+
 def run_benchmarks(
     config: Config,
     pytest_args: tuple[str, ...] = (),
@@ -90,23 +123,24 @@ def run_benchmarks(
         benchmark_context = BenchmarkHookContext(
             config=config,
             pytest_args=arguments,
-            environment=dict(os.environ),
+            environment=_subprocess_environment(config),
             raw_path=raw_path,
             started_at=started_at,
         )
         try:
             call_hook(manager, "benched_before_benchmark", benchmark_context)
-            benchmark_context.exit_code = subprocess.run(
+            benchmark_context.exit_code, peak_memory = _run_with_peak_memory(
                 benchmark_context.pytest_args,
                 cwd=config.project_root,
                 env=benchmark_context.environment,
-                check=False,
-            ).returncode
+            )
             benchmark_context.ended_at = _now()
             if not raw_path.is_file() or raw_path.stat().st_size == 0:
                 run = None
             else:
                 raw_data: Any = json.loads(raw_path.read_text(encoding="utf-8"))
+                for benchmark in raw_data.get("benchmarks", ()):
+                    benchmark.setdefault("extra_info", {})["peak_memory_bytes"] = peak_memory
                 run = normalize_pytest_benchmark(
                     raw_data,
                     started_at=started_at,
@@ -159,7 +193,7 @@ def collect_benchmarks(config: Config, pytest_args: tuple[str, ...] = ()) -> tup
         output_path = Path(temporary_directory) / "nodeids.json"
         arguments = _pytest_arguments(config, pytest_args)
         arguments.extend(["--collect-only", "-qq"])
-        environment = dict(os.environ)
+        environment = _subprocess_environment(config)
         environment["BENCHED_COLLECTION_PATH"] = str(output_path)
         completed = subprocess.run(arguments, cwd=config.project_root, env=environment, check=False, capture_output=True, text=True)
         exit_code = completed.returncode

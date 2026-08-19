@@ -12,6 +12,9 @@ from fsspec.core import url_to_fs
 
 from .model import Run
 
+ARCHIVE_NAME = "archive.json.gz"
+ARCHIVE_SCHEMA_VERSION = 1
+
 
 class StorageError(RuntimeError):
     """Raised when immutable benchmark history cannot be read or written."""
@@ -69,13 +72,31 @@ def save_run(url: str, run: Run, *, storage_options: dict[str, Any] | None = Non
     return _location(filesystem, final_path)
 
 
+def _read_archive(filesystem: AbstractFileSystem, path: str) -> list[StoredRun]:
+    location = _location(filesystem, path)
+    try:
+        with filesystem.open(path, "rt", compression="gzip", encoding="utf-8") as file:
+            document = json.load(file)
+        runs = document.get("runs") if isinstance(document, dict) else None
+        if not isinstance(runs, list):
+            raise StorageError(f"invalid archive at {location}: expected an object with a runs array")
+        return [StoredRun(location=location, run=Run.from_dict(item)) for item in runs]
+    except (OSError, ValueError, TypeError) as error:
+        raise StorageError(f"invalid archive at {location}: {error}") from error
+
+
 def read_runs(url: str, *, storage_options: dict[str, Any] | None = None) -> tuple[StoredRun, ...]:
     filesystem, root = _filesystem(url, storage_options)
     if not filesystem.exists(root):
         return ()
     stored: list[StoredRun] = []
     for path in sorted(filesystem.find(root)):
-        if not path.endswith(".json") or posixpath.basename(path).startswith("."):
+        if posixpath.basename(path).startswith("."):
+            continue
+        if path.endswith(".json.gz"):
+            stored.extend(_read_archive(filesystem, path))
+            continue
+        if not path.endswith(".json"):
             continue
         try:
             with filesystem.open(path, "rt", encoding="utf-8") as file:
@@ -84,6 +105,38 @@ def read_runs(url: str, *, storage_options: dict[str, Any] | None = None) -> tup
             raise StorageError(f"invalid run document at {_location(filesystem, path)}: {error}") from error
         stored.append(StoredRun(location=_location(filesystem, path), run=run))
     return tuple(stored)
+
+
+def compact_runs(url: str, *, keep: int, storage_options: dict[str, Any] | None = None) -> tuple[int, str]:
+    if keep < 0:
+        raise StorageError("keep must be non-negative")
+    filesystem, root = _filesystem(url, storage_options)
+    archive_path = posixpath.join(root, ARCHIVE_NAME)
+    archive_location = _location(filesystem, archive_path)
+    ordered = sorted(read_runs(url, storage_options=storage_options), key=lambda item: (item.run.ended_at, item.run.run_id))
+    raw = [item for item in ordered if not item.location.endswith(".json.gz")]
+    to_archive = raw[:-keep] if keep else raw
+    if not to_archive:
+        return 0, archive_location
+
+    archived = {item.run.run_id: item for item in ordered if item.location.endswith(".json.gz")}
+    archived.update((item.run.run_id, item) for item in to_archive)
+    combined = sorted(archived.values(), key=lambda item: (item.run.ended_at, item.run.run_id))
+    document = {"schema_version": ARCHIVE_SCHEMA_VERSION, "runs": [item.run.to_dict() for item in combined]}
+    payload = json.dumps(document, indent=2, sort_keys=False, ensure_ascii=True).encode() + b"\n"
+    temporary_path = posixpath.join(root, f".{ARCHIVE_NAME}.{uuid4().hex}.tmp")
+    try:
+        with filesystem.open(temporary_path, "wb", compression="gzip") as file:
+            file.write(payload)
+        if filesystem.exists(archive_path):
+            filesystem.rm(archive_path)
+        filesystem.mv(temporary_path, archive_path)
+    finally:
+        if filesystem.exists(temporary_path):
+            filesystem.rm(temporary_path)
+    for item in to_archive:
+        filesystem.rm(item.location)
+    return len(to_archive), archive_location
 
 
 def resolve_run(url: str, selector: str, *, storage_options: dict[str, Any] | None = None) -> StoredRun:

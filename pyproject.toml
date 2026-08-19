@@ -32,6 +32,7 @@ classifiers = [
 dependencies = [
     "fsspec>=2024.6",
     "pluggy>=1.5,<2",
+    "psutil>=5.9",
     "pytest>=8.1",
     "pytest-benchmark>=5.2,<6",
 ]
@@ -47,6 +48,7 @@ develop = [
     "jsonschema>=4.23",
     "mdformat",
     "mdformat-tables>=1",
+    "pyarrow",
     "pytest",
     "pytest-cov",
     "ruff",
@@ -55,6 +57,9 @@ develop = [
     "uv",
     "wheel",
     "yardang[themes]>=0.7.1",
+]
+export = [
+    "pyarrow",
 ]
 sphinx = [
     "sphinx>=7",

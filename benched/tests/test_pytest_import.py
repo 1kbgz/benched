@@ -1,4 +1,5 @@
 import hashlib
+import json
 import shutil
 from pathlib import Path
 from uuid import uuid4
@@ -45,6 +46,24 @@ def test_converts_pytest_benchmark_history_with_source_identity(tmp_path):
     assert run.provenance.source_file == str(source)
     assert run.provenance.source_checksum == f"sha256:{hashlib.sha256(source.read_bytes()).hexdigest()}"
     assert len(run.measurements) == 1
+
+
+def test_pytest_import_machine_fingerprint_uses_available_hardware(tmp_path):
+    source = _source(tmp_path)
+    document = json.loads(source.read_text(encoding="utf-8"))
+    document["machine_info"].update({"cpu": "Example CPU", "cpu_count": "16", "ram": "64 GiB"})
+    source.write_text(json.dumps(document), encoding="utf-8")
+    first = convert_pytest_benchmark(source, _identities())
+
+    document["machine_info"].update({"system": "Other OS", "ram": "32 GiB"})
+    source.write_text(json.dumps(document), encoding="utf-8")
+    second = convert_pytest_benchmark(source, _identities())
+    assert first.machine.fingerprint == second.machine.fingerprint
+
+    document["machine_info"]["cpu_count"] = 8
+    source.write_text(json.dumps(document), encoding="utf-8")
+    changed = convert_pytest_benchmark(source, _identities())
+    assert changed.machine.fingerprint != first.machine.fingerprint
 
 
 def test_import_is_idempotent_supports_directories_fsspec_and_dry_run(tmp_path):

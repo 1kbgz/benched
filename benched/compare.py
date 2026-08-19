@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
-from typing import Literal
+from typing import Any, Literal
 
 from .model import Measurement, Run
-from .query import RunFilters, filter_measurements
+from .query import RunFilters, encode_benchmark_id, filter_measurements, split_benchmark_id
 
-SUPPORTED_METRICS = ("median", "mean", "min", "max", "ops")
+SUPPORTED_METRICS = ("median", "mean", "min", "max", "ops", "peak_memory")
 
 ComparisonStatus = Literal["improved", "regressed", "unchanged", "added", "removed", "incompatible"]
 
@@ -155,6 +155,59 @@ def compare_runs(
         metric=metric,
         differences=differences,
         warnings=mismatches if allow_mismatch else (),
+    )
+
+
+def _pair_id(measurement: Measurement, key: str) -> str:
+    base, suffix = split_benchmark_id(measurement.benchmark_id)
+    remaining = {name: item for name, item in measurement.parameters.items() if name != key}
+    return encode_benchmark_id(base, remaining) + suffix
+
+
+def compare_baseline(
+    run: Run,
+    *,
+    key: str,
+    value: Any,
+    metric: str = "median",
+    filters: RunFilters | None = None,
+) -> RunComparison:
+    if metric not in SUPPORTED_METRICS:
+        raise CompareError(f"unsupported metric {metric!r}; choose from {', '.join(SUPPORTED_METRICS)}")
+    if run.status != "success":
+        raise BenchmarkRunError(f"cannot compare unsuccessful run: {run.run_id}")
+
+    baselines: dict[str, Measurement] = {}
+    variants: dict[str, list[Measurement]] = {}
+    for measurement in filter_measurements(run, filters or RunFilters()):
+        if key not in measurement.parameters:
+            continue
+        pair = _pair_id(measurement, key)
+        if measurement.parameters[key] == value:
+            baselines[pair] = measurement
+        else:
+            variants.setdefault(pair, []).append(measurement)
+    if not baselines:
+        raise CompareError(f"no measurements match baseline {key}={value!r}")
+
+    warnings: list[str] = []
+    paired: list[tuple[Measurement, Measurement]] = []
+    for pair, measurements in variants.items():
+        baseline = baselines.get(pair)
+        if baseline is None:
+            warnings.extend(f"no baseline measurement for {measurement.benchmark_id}" for measurement in measurements)
+            continue
+        paired.extend((baseline, measurement) for measurement in measurements)
+    if not paired:
+        raise CompareError(f"no measurements to compare against baseline {key}={value!r}")
+    paired.sort(key=lambda item: item[1].benchmark_id)
+    differences = tuple(_difference(variant.benchmark_id, baseline, variant, metric) for baseline, variant in paired)
+    return RunComparison(
+        base_run_id=run.run_id,
+        head_run_id=run.run_id,
+        metric=metric,
+        differences=differences,
+        warnings=tuple(sorted(warnings)),
     )
 
 

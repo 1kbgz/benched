@@ -117,7 +117,7 @@ def test_linear_graph(benchmark, graph_inputs):
     assert result.run.subject.version == "2.10.0"
     assert result.run.subject.revision == "csp-def456"
     assert result.run.machine.id == "github-actions"
-    assert len(result.run.measurements) == 4
+    assert len(result.run.measurements) == 8
     assert {measurement.group for measurement in result.run.measurements} == {"core"}
     assert {(measurement.parameters["num_ticks"], measurement.parameters["num_nodes"]) for measurement in result.run.measurements} == {
         (5, 10),

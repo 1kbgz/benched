@@ -93,6 +93,49 @@ def test_converts_asv_v2_parameter_axes_statistics_and_identity(tmp_path):
     assert run.provenance.warnings == ("1 ASV measurements have no result",)
 
 
+@pytest.mark.parametrize(
+    ("ram", "expected"),
+    [
+        ("65316548", 62.5),
+        ("66884141056", 62.5),
+        (131479064, 125.5),
+        ("64 GiB", 64.0),
+    ],
+)
+def test_converts_asv_unsuffixed_ram_units(tmp_path, ram, expected):
+    source = tmp_path / "result.json"
+    source.write_text(json.dumps(_result_v2()), encoding="utf-8")
+
+    run = convert_asv_result(
+        source,
+        _benchmarks(),
+        AsvIdentityOptions(suite_name="suite"),
+        machine_metadata={"ram": ram},
+    )
+
+    assert run.machine.metadata["memory_gib"] == expected
+
+
+def test_asv_machine_fingerprint_excludes_volatile_metadata(tmp_path):
+    source = tmp_path / "result.json"
+    source.write_text(json.dumps(_result_v2()), encoding="utf-8")
+    identities = AsvIdentityOptions(suite_name="suite")
+    stable = {"arch": "x86_64", "cpu": "Example CPU", "num_cpu": "16"}
+
+    first = convert_asv_result(source, _benchmarks(), identities, machine_metadata={**stable, "os": "Linux 1", "ram": "64 GiB"})
+    second = convert_asv_result(source, _benchmarks(), identities, machine_metadata={**stable, "os": "Linux 2", "ram": "32 GiB"})
+
+    assert first.machine.fingerprint == second.machine.fingerprint
+    for key, value in (("arch", "arm64"), ("cpu", "Other CPU"), ("num_cpu", 8)):
+        changed_metadata = {**stable, key: value}
+        document = _result_v2()
+        if key == "arch":
+            document["params"]["arch"] = value
+        source.write_text(json.dumps(document), encoding="utf-8")
+        changed = convert_asv_result(source, _benchmarks(), identities, machine_metadata=changed_metadata)
+        assert changed.machine.fingerprint != first.machine.fingerprint
+
+
 def test_converts_legacy_asv_v1_scalar_result(tmp_path):
     source = tmp_path / "machine" / "legacy.json"
     source.parent.mkdir()
@@ -153,6 +196,21 @@ def test_preserves_legacy_scalar_that_predates_parameter_grid(tmp_path):
     assert run.measurements[0].parameters == {}
     assert run.measurements[0].stats["median"] == 42
     assert "predates its parameter grid" in run.provenance.warnings[0]
+
+
+def test_skips_result_without_benchmark_metadata(tmp_path):
+    source = tmp_path / "result.json"
+    document = _result_v2()
+    document["results"]["bench.RemovedSuite.time_removed"] = [0.5]
+    source.write_text(json.dumps(document), encoding="utf-8")
+
+    run = convert_asv_result(source, _benchmarks(), AsvIdentityOptions(suite_name="suite"))
+
+    assert {measurement.name for measurement in run.measurements} == {"bench.ParseSuite.time_parse"}
+    assert run.provenance.warnings == (
+        "skipped ASV result 'bench.RemovedSuite.time_removed' because its benchmark metadata is missing",
+        "1 ASV measurements have no result",
+    )
 
 
 def test_expands_failed_parameterized_asv_benchmark(tmp_path):

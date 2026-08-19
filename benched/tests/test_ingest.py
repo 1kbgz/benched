@@ -45,6 +45,21 @@ def test_normalizes_parameterized_pytest_benchmark():
     assert measurement.samples is None
 
 
+def test_normalizes_peak_memory_as_sibling_measurement():
+    source = json.loads((FIXTURES / "pytest-benchmark-v5.json").read_text(encoding="utf-8"))
+    source["benchmarks"][0]["extra_info"]["peak_memory_bytes"] = 67_108_864
+
+    run = normalize_pytest_benchmark(source, **_context())
+
+    timing, memory = run.measurements
+    assert memory.benchmark_id == f"{timing.benchmark_id}:peak-memory"
+    assert memory.nodeid == timing.nodeid
+    assert memory.name == f"{timing.name} peak memory"
+    assert memory.parameters == timing.parameters
+    assert memory.unit == "bytes"
+    assert memory.stats == {"peak_memory": 67_108_864}
+
+
 def test_raw_samples_are_opt_in():
     source = json.loads((FIXTURES / "pytest-benchmark-v5.json").read_text(encoding="utf-8"))
     source["benchmarks"][0]["stats"]["data"] = [0.1, 0.2]
