@@ -42,6 +42,17 @@ def test_operations_per_second_reverses_improvement_direction():
     assert result.differences[0].delta == -2.0
 
 
+def test_peak_memory_is_lower_is_better_and_gateable():
+    result = compare_runs(
+        _run("base", 100.0, metric="peak_memory"),
+        _run("head", 125.0, metric="peak_memory"),
+        metric="peak_memory",
+    )
+
+    assert result.differences[0].status == "regressed"
+    assert regression_gate(result, parse_threshold("peak_memory:20")) is True
+
+
 def test_marks_added_removed_and_unavailable_measurements():
     base = _run("base", 10.0)
     original = base.measurements[0]

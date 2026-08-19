@@ -56,6 +56,16 @@ def test_report_applies_measurement_filters():
     assert len(report.benchmarks) == 1
 
 
+def test_report_includes_peak_memory_metric():
+    first, _ = _runs()
+    measurement = replace(first.measurements[0], unit="bytes", stats={"peak_memory": 67_108_864})
+
+    report = compile_report((replace(first, measurements=(measurement,)),)).to_dict()
+
+    assert report["benchmarks"][0]["unit"] == "bytes"
+    assert report["benchmarks"][0]["series"][0]["metrics"]["peak_memory"] == 67_108_864
+
+
 def test_report_rejects_empty_selection():
     with pytest.raises(ReportError, match="no runs selected"):
         compile_report(())

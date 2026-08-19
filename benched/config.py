@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import tomllib
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +29,7 @@ class Config:
     project_version: str | None
     suite: IdentityConfig
     subject: IdentityConfig
+    env: dict[str, str] = field(default_factory=dict)
 
 
 def _find_pyproject(start: Path) -> Path | None:
@@ -76,6 +77,13 @@ def _identity(value: Any, field_name: str) -> IdentityConfig:
         repository=_optional_string(data.get("repository"), f"{field_name}.repository"),
         distribution=_optional_string(data.get("distribution"), f"{field_name}.distribution"),
     )
+
+
+def _subprocess_environment(value: Any) -> dict[str, str]:
+    environment = _table(value, "tool.benched.env")
+    if not all(isinstance(key, str) and key and isinstance(item, str) for key, item in environment.items()):
+        raise ConfigError("tool.benched.env values must be strings")
+    return environment
 
 
 def _environment_config(environ: Mapping[str, str]) -> dict[str, Any]:
@@ -157,4 +165,5 @@ def load_config(
         project_version=project_version,
         suite=_identity(config.get("suite"), "tool.benched.suite"),
         subject=_identity(config.get("subject"), "tool.benched.subject"),
+        env=_subprocess_environment(config.get("env")),
     )

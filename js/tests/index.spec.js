@@ -14,7 +14,7 @@ async function toggle(page, panel, label) {
     .click();
 }
 
-function largeReport(revisionCount = 100, benchmarkCount = 100) {
+function largeReport(runCount = 44, benchmarkCount = 615) {
   const machines = [
     ["linux-arm", "Linux", "arm64", 8],
     ["linux-x86", "Linux", "x86_64", 16],
@@ -24,29 +24,28 @@ function largeReport(revisionCount = 100, benchmarkCount = 100) {
   ];
   const pythons = ["3.11.9", "3.12.13", "3.13.7"];
   const runs = [];
-  for (let revision = 0; revision < revisionCount; revision += 1) {
-    for (const [machine, platform, architecture, memory] of machines) {
-      for (const python of pythons) {
-        const runId = `run-${revision}-${machine}-${python}`;
-        runs.push({
-          run_id: runId,
-          started_at: new Date(Date.UTC(2026, 0, revision + 1)).toISOString(),
-          status: "success",
-          suite: { name: "benched", revision: `suite-${revision}` },
-          subject: {
-            name: "benched",
-            version: `0.${revision}.0`,
-            revision: `subject-${revision}`,
-          },
-          machine: { id: machine, metadata: { memory_gib: memory } },
-          environment: {
-            python_version: python,
-            platform,
-            architecture,
-          },
-        });
-      }
-    }
+  for (let revision = 0; revision < runCount; revision += 1) {
+    const [machine, platform, architecture, memory] =
+      machines[revision % machines.length];
+    const python = pythons[Math.floor(revision / machines.length) % 3];
+    const runId = `run-${revision}-${machine}-${python}`;
+    runs.push({
+      run_id: runId,
+      started_at: new Date(Date.UTC(2026, 0, revision + 1)).toISOString(),
+      status: "success",
+      suite: { name: "benched", revision: `suite-${revision}` },
+      subject: {
+        name: "benched",
+        version: `0.${revision}.0`,
+        revision: `subject-${revision}`,
+      },
+      machine: { id: machine, metadata: { memory_gib: memory } },
+      environment: {
+        python_version: python,
+        platform,
+        architecture,
+      },
+    });
   }
   const benchmarks = Array.from({ length: benchmarkCount }, (_, index) => ({
     benchmark_id: `benchmarks/test_benched.py::test_compile_report|case=${index}`,
@@ -65,6 +64,7 @@ function largeReport(revisionCount = 100, benchmarkCount = 100) {
           min: median * 0.95,
           max: median * 1.08,
           ops: 1 / median,
+          peak_memory: 67_108_864 + index * 1024 + runIndex,
         },
       };
     }),
@@ -596,16 +596,33 @@ test.describe("Benched report", () => {
       element.setAttribute("src", "large-report.json"),
     );
     await expect(report.locator(".benched-header small")).toHaveText(
-      "1500 runs · 100 benchmarks",
+      "44 runs · 615 benchmarks",
     );
-    await expect(report.locator(".benched-benchmark-list a")).toHaveCount(100);
+    await expect(report.locator(".benched-benchmark-list a")).toHaveCount(615);
     const overviewMilliseconds = Date.now() - started;
 
     await select(page, ".benched-view-select", "trend");
-    await expect(report.locator(".benched-trend-card")).toHaveCount(100);
+    const cards = report.locator(".benched-trend-card");
+    await expect(cards).toHaveCount(615);
     await expect(
       report.locator(".benched-mini-chart canvas").first(),
     ).toBeVisible();
+    await select(page, ".benched-metric-select", "peak_memory");
+    await expect(
+      report.locator(".benched-mini-chart canvas").first(),
+    ).toBeVisible();
+    expect(
+      await report.locator(".benched-mini-chart:has(canvas)").count(),
+    ).toBeLessThan(20);
+    expect(
+      await report.locator(".benched-mini-chart canvas").count(),
+    ).toBeLessThan(120);
+    await cards.last().scrollIntoViewIfNeeded();
+    await expect(cards.last().locator("canvas").first()).toBeVisible();
+    await expect(cards.first().locator("canvas")).toHaveCount(0);
+    await expect
+      .poll(() => report.locator(".benched-mini-chart:has(canvas)").count())
+      .toBeLessThan(20);
     const matrixMilliseconds = Date.now() - started;
     await select(page, ".benched-benchmark-select", "benchmark-0");
     await expect(report.locator(".benched-chart canvas").first()).toBeVisible();
@@ -618,7 +635,7 @@ test.describe("Benched report", () => {
       body: JSON.stringify(
         {
           bytes: new TextEncoder().encode(payload).length,
-          points: 150_000,
+          points: 27_060,
           overview_milliseconds: overviewMilliseconds,
           matrix_milliseconds: matrixMilliseconds,
           trend_milliseconds: trendMilliseconds,

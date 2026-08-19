@@ -12,7 +12,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 
-type Metric = "median" | "mean" | "min" | "max" | "ops";
+type Metric = "median" | "mean" | "min" | "max" | "ops" | "peak_memory";
 type Theme = "light" | "dark";
 type View = "overview" | "trend" | "comparison";
 type XAxis = "version" | "time";
@@ -72,7 +72,14 @@ interface ValueElement extends HTMLElement {
   value: string | string[] | null;
 }
 
-const METRICS: Metric[] = ["median", "mean", "min", "max", "ops"];
+const METRICS: Metric[] = [
+  "median",
+  "mean",
+  "min",
+  "max",
+  "ops",
+  "peak_memory",
+];
 const VIEWS: View[] = ["overview", "trend", "comparison"];
 const CONTROLS: Control[] = [
   "view",
@@ -214,6 +221,8 @@ export class BenchedReport extends HTMLElement {
   private report?: Report;
   private charts = new Map<HTMLElement, IChartApi>();
   private chartResizeObserver?: ResizeObserver;
+  private chartVisibilityObserver?: IntersectionObserver;
+  private chartRenderers = new Map<HTMLElement, () => void>();
   private request?: AbortController;
   private media?: MediaQueryList;
   private themeObserver?: MutationObserver;
@@ -1211,49 +1220,51 @@ export class BenchedReport extends HTMLElement {
       grid.append(card);
       if (data.length === 0) continue;
 
-      const chart = createChart(chartContainer, {
-        autoSize: true,
-        height: 240,
-        handleScale: false,
-        handleScroll: false,
-        layout: {
-          attributionLogo: false,
-          background: { type: ColorType.Solid, color: "transparent" },
-          textColor: style.color,
-        },
-        grid: {
-          vertLines: {
-            color:
-              style.getPropertyValue("--_benched-grid-color").trim() ||
-              "#d8dee9",
+      this.renderChartWhenVisible(chartContainer, () => {
+        const chart = createChart(chartContainer, {
+          autoSize: true,
+          height: 240,
+          handleScale: false,
+          handleScroll: false,
+          layout: {
+            attributionLogo: false,
+            background: { type: ColorType.Solid, color: "transparent" },
+            textColor: style.color,
           },
-          horzLines: {
-            color:
-              style.getPropertyValue("--_benched-grid-color").trim() ||
-              "#d8dee9",
+          grid: {
+            vertLines: {
+              color:
+                style.getPropertyValue("--_benched-grid-color").trim() ||
+                "#d8dee9",
+            },
+            horzLines: {
+              color:
+                style.getPropertyValue("--_benched-grid-color").trim() ||
+                "#d8dee9",
+            },
           },
-        },
-        localization:
-          this.xAxis === "version"
-            ? {
-                timeFormatter: (time: Time) =>
-                  axisLabels.get(Number(time)) ?? "unknown",
-              }
-            : undefined,
-        timeScale:
-          this.xAxis === "version"
-            ? {
-                tickMarkFormatter: (time: Time) =>
-                  axisLabels.get(Number(time)) ?? "",
-              }
-            : undefined,
+          localization:
+            this.xAxis === "version"
+              ? {
+                  timeFormatter: (time: Time) =>
+                    axisLabels.get(Number(time)) ?? "unknown",
+                }
+              : undefined,
+          timeScale:
+            this.xAxis === "version"
+              ? {
+                  tickMarkFormatter: (time: Time) =>
+                    axisLabels.get(Number(time)) ?? "",
+                }
+              : undefined,
+        });
+        const line = chart.addSeries(LineSeries, {
+          color,
+          priceFormat: chartPriceFormat(data.map((point) => point.value)),
+        });
+        line.setData(data);
+        this.trackChart(chartContainer, chart);
       });
-      const line = chart.addSeries(LineSeries, {
-        color,
-        priceFormat: chartPriceFormat(data.map((point) => point.value)),
-      });
-      line.setData(data);
-      this.trackChart(chartContainer, chart);
     }
   }
 
@@ -1321,7 +1332,43 @@ export class BenchedReport extends HTMLElement {
     });
   }
 
+  private renderChartWhenVisible(
+    container: HTMLElement,
+    renderChart: () => void,
+  ) {
+    if (!("IntersectionObserver" in window)) {
+      renderChart();
+      return;
+    }
+    this.chartRenderers.set(container, renderChart);
+    this.chartVisibilityObserver ??= new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const target = entry.target as HTMLElement;
+          if (entry.isIntersecting) {
+            if (!this.charts.has(target)) this.chartRenderers.get(target)?.();
+          } else {
+            this.removeTrackedChart(target);
+          }
+        }
+      },
+      { rootMargin: "480px 0px" },
+    );
+    this.chartVisibilityObserver.observe(container);
+  }
+
+  private removeTrackedChart(container: HTMLElement) {
+    const chart = this.charts.get(container);
+    if (!chart) return;
+    this.chartResizeObserver?.unobserve(container);
+    chart.remove();
+    this.charts.delete(container);
+  }
+
   private removeChart() {
+    this.chartVisibilityObserver?.disconnect();
+    this.chartVisibilityObserver = undefined;
+    this.chartRenderers.clear();
     this.chartResizeObserver?.disconnect();
     this.chartResizeObserver = undefined;
     for (const chart of this.charts.values()) chart.remove();

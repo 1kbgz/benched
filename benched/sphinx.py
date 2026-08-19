@@ -11,6 +11,7 @@ from typing import Any
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
 from sphinx.application import Sphinx
+from sphinx.environment import BuildEnvironment
 from sphinx.util.osutil import relative_uri
 
 from .model import Report, load_report
@@ -19,7 +20,7 @@ from .report import compile_report
 from .storage import read_runs
 
 _VIEWS = ("overview", "trend", "comparison")
-_METRICS = ("median", "mean", "min", "max", "ops")
+_METRICS = ("median", "mean", "min", "max", "ops", "peak_memory")
 _X_AXES = ("version", "time")
 _THEMES = ("inherit", "light", "dark")
 _CONTROLS = ("view", "metric", "x-axis", "benchmark", "machine", "python", "memory", "theme")
@@ -52,7 +53,7 @@ def _compile_source(argument: str, source_directory: Path, options: dict[str, An
     if source_path.is_file() or source_path.suffix == ".json":
         return load_report(source_path)
 
-    filters = RunFilters(statuses=("success",), benchmark=options.get("benchmark"))
+    filters = RunFilters(statuses=("success",), benchmark=options.get("benchmark-filter"))
     stored_runs = read_runs(_source_url(argument, source_directory))
     selectors = shlex.split(options.get("selector", ""))
     if selectors:
@@ -61,6 +62,21 @@ def _compile_source(argument: str, source_directory: Path, options: dict[str, An
     else:
         runs = tuple(stored.run for stored in filter_runs(stored_runs, filters))
     return compile_report(runs, filters=filters)
+
+
+def _note_source_dependencies(environment: BuildEnvironment, argument: str, source_directory: Path) -> None:
+    if "://" in argument or "::" in argument:
+        return
+    source_path = (source_directory / argument).resolve()
+    if source_path.is_file() or source_path.suffix == ".json":
+        environment.note_dependency(str(source_path))
+        return
+    if not source_path.is_dir():
+        return
+    environment.note_reread()
+    for dependency in source_path.rglob("*.json"):
+        if dependency.is_file() and not dependency.name.startswith("."):
+            environment.note_dependency(str(dependency))
 
 
 def _write_report(app: Sphinx, report: Report, source_name: str) -> str:
@@ -94,6 +110,7 @@ class BenchedDirective(Directive):
         "metric": _choice(_METRICS),
         "x-axis": _choice(_X_AXES),
         "benchmark": directives.unchanged_required,
+        "benchmark-filter": directives.unchanged_required,
         "machine": directives.unchanged_required,
         "python": directives.unchanged_required,
         "memory": directives.unchanged_required,
@@ -105,6 +122,7 @@ class BenchedDirective(Directive):
     def run(self) -> list[nodes.Node]:
         environment = self.state.document.settings.env
         source_directory = Path(self.state.document.current_source).parent
+        _note_source_dependencies(environment, self.arguments[0], source_directory)
         try:
             report = _compile_source(self.arguments[0], source_directory, self.options)
             report = _transform_report(environment.app, report, self.options)

@@ -85,6 +85,26 @@ auto_mkdir = true
     assert config.storage_options == {"auto_mkdir": True}
 
 
+def test_loads_benchmark_subprocess_environment(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        '[tool.benched.env]\nOMP_NUM_THREADS = "1"\nEMPTY_VALUE = ""\n',
+        encoding="utf-8",
+    )
+
+    config = load_config(pyproject, environ={})
+
+    assert config.env == {"OMP_NUM_THREADS": "1", "EMPTY_VALUE": ""}
+
+
+def test_rejects_non_string_benchmark_environment_values(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text("[tool.benched.env]\nOMP_NUM_THREADS = 1\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=r"tool\.benched\.env values must be strings"):
+        load_config(pyproject, environ={})
+
+
 def test_rejects_invalid_benchmark_paths(tmp_path):
     pyproject = tmp_path / "pyproject.toml"
     pyproject.write_text('[tool.benched]\nbenchmark_paths = "benchmarks"\n', encoding="utf-8")

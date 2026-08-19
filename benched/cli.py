@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .asv import AsvImportError, import_asv_results, infer_asv_identities
 from .compare import (
+    SUPPORTED_METRICS,
     BenchmarkRunError,
     CompareError,
     CompatibilityError,
@@ -203,7 +204,7 @@ def _compare(arguments: list[str]) -> int:
     parser = _config_parser("benched compare")
     parser.add_argument("base")
     parser.add_argument("head")
-    parser.add_argument("--metric", choices=("median", "mean", "min", "max", "ops"))
+    parser.add_argument("--metric", choices=SUPPORTED_METRICS)
     parser.add_argument("--fail-if", metavar="[METRIC:]THRESHOLD[%]")
     parser.add_argument("--allow-mismatch", action="store_true")
     _add_filters(parser)
@@ -233,7 +234,7 @@ def _report(arguments: list[str]) -> int:
     parser.add_argument("selectors", nargs="*")
     parser.add_argument("--format", action="append", default=[], dest="formats")
     parser.add_argument("--output", default="build/benched")
-    parser.add_argument("--metric", choices=("median", "mean", "min", "max", "ops"), default="median")
+    parser.add_argument("--metric", choices=SUPPORTED_METRICS, default="median")
     parser.add_argument("--latest", type=int, metavar="N")
     _add_filters(parser)
     options = parser.parse_args(arguments)

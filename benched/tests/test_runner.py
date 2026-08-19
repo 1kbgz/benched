@@ -1,3 +1,4 @@
+import os
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -48,10 +49,12 @@ def test_length(benchmark, size):
 
     assert first.exit_code == second.exit_code == 0
     assert first.run is not None
-    assert len(first.run.measurements) == 2
+    assert len(first.run.measurements) == 4
     assert second.run is not None
-    assert len(second.run.measurements) == 1
+    assert len(second.run.measurements) == 2
     assert {measurement.parameters["size"] for measurement in first.run.measurements} == {1, 3}
+    assert len([measurement for measurement in first.run.measurements if measurement.unit == "bytes"]) == 2
+    assert all(measurement.stats["peak_memory"] > 0 for measurement in first.run.measurements if measurement.unit == "bytes")
     assert all(measurement.samples is None for measurement in first.run.measurements)
     assert first.run.suite.name == "runner-suite"
     assert first.run.subject.name == "runner-suite"
@@ -77,6 +80,32 @@ def test_sum(benchmark):
     assert result.run is not None
     assert result.run.measurements[0].stats["rounds"] == 2
     assert len(result.run.measurements[0].samples or ()) == 2
+    assert result.run.measurements[1].unit == "bytes"
+    assert result.run.measurements[1].stats["peak_memory"] > 0
+
+
+def test_applies_configured_environment_to_benchmark_subprocess(tmp_path, monkeypatch):
+    pyproject = _project(
+        tmp_path,
+        """
+import os
+
+def test_environment(benchmark):
+    assert os.environ["OMP_NUM_THREADS"] == "1"
+    assert os.environ["EMPTY_VALUE"] == ""
+    benchmark(len, [1])
+""".strip(),
+    )
+    with pyproject.open("a", encoding="utf-8") as file:
+        file.write('\n\n[tool.benched.env]\nOMP_NUM_THREADS = "1"\nEMPTY_VALUE = ""\n')
+    monkeypatch.setenv("OMP_NUM_THREADS", "8")
+    config = load_config(pyproject, environ={})
+
+    result = run_benchmarks(config, quick=True, no_save=True)
+
+    assert result.exit_code == 0
+    assert os.environ["OMP_NUM_THREADS"] == "8"
+    assert "EMPTY_VALUE" not in os.environ
 
 
 def test_preserves_partial_failed_run(tmp_path):
@@ -98,7 +127,12 @@ def test_fails(benchmark):
     assert result.exit_code == 1
     assert result.run is not None
     assert result.run.status == "failed"
-    assert [measurement.name for measurement in result.run.measurements] == ["test_passes", "test_fails"]
+    assert [measurement.name for measurement in result.run.measurements] == [
+        "test_passes",
+        "test_passes peak memory",
+        "test_fails",
+        "test_fails peak memory",
+    ]
     assert len(read_runs(config.results_dir)) == 1
 
 
@@ -124,6 +158,28 @@ def test_ordinary():
     assert exit_code == 0
     assert nodeids == ("benchmarks/test_speed.py::test_speed",)
     assert not marker.exists()
+
+
+def test_applies_configured_environment_while_collecting(tmp_path):
+    pyproject = _project(
+        tmp_path,
+        """
+import os
+
+assert os.environ["BENCHED_IMPORT_STATE"] == "ready"
+
+def test_speed(benchmark):
+    benchmark(len, [1])
+""".strip(),
+    )
+    with pyproject.open("a", encoding="utf-8") as file:
+        file.write('\n\n[tool.benched.env]\nBENCHED_IMPORT_STATE = "ready"\n')
+    config = load_config(pyproject, environ={})
+
+    exit_code, nodeids = collect_benchmarks(config)
+
+    assert exit_code == 0
+    assert nodeids == ("benchmarks/test_speed.py::test_speed",)
 
 
 def test_run_hooks_enrich_before_store_and_observe_location(tmp_path):

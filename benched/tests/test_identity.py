@@ -1,5 +1,5 @@
 from benched.config import Config, IdentityConfig
-from benched.identity import GitInfo, resolve_environment, resolve_identities, resolve_machine
+from benched.identity import GitInfo, machine_fingerprint, resolve_environment, resolve_identities, resolve_machine
 
 
 def _config(tmp_path, *, suite_name="suite", subject_name="subject", distribution="subject"):
@@ -46,6 +46,15 @@ def test_machine_fingerprint_excludes_human_id():
 
     assert first.id != second.id
     assert first.fingerprint == second.fingerprint
+
+
+def test_machine_fingerprint_uses_normalized_stable_hardware_fields():
+    fingerprint = machine_fingerprint(architecture=" ARM64 ", cpu="Apple   M5", cpu_count="12")
+
+    assert fingerprint == machine_fingerprint(architecture="arm64", cpu="apple m5", cpu_count=12)
+    assert fingerprint != machine_fingerprint(architecture="x86_64", cpu="apple m5", cpu_count=12)
+    assert fingerprint != machine_fingerprint(architecture="arm64", cpu="apple m4", cpu_count=12)
+    assert fingerprint != machine_fingerprint(architecture="arm64", cpu="apple m5", cpu_count=10)
 
 
 def test_machine_records_memory_rounded_to_half_gib(monkeypatch):

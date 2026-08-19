@@ -47,6 +47,22 @@ change in `:hide-controls:`:
 
 Hidden controls do not disable their selections. Use `:theme: light` or `:theme: dark` to override the surrounding page; the default is `inherit`.
 
+`:benchmark:` must be one exact benchmark ID because it selects the benchmark shown
+by the component. When embedding a results directory, use a separate glob to reduce
+the data compiled into the static report:
+
+```rst
+.. benched:: ../benchmark-results
+   :view: trend
+   :benchmark-filter: tests/test_parse.py::*
+   :benchmark: tests/test_parse.py::test_parse|size=100
+```
+
+Benched registers local report files and stored runs with Sphinx. Incremental builds
+therefore regenerate embedded report data after those inputs change. Remote fsspec
+sources are read when Sphinx rebuilds the document, but cannot notify Sphinx about
+external changes.
+
 This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:
 

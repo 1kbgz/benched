@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 from dataclasses import replace
 from pathlib import Path
@@ -19,6 +20,13 @@ def _configuration(source: Path) -> None:
         'extensions = ["benched.sphinx"]\nmaster_doc = "index"\nproject = "example"\n',
         encoding="utf-8",
     )
+
+
+def _embedded_report_path(output: Path) -> Path:
+    page = output.joinpath("index.html").read_text(encoding="utf-8")
+    match = re.search(r'<benched-report src="([^"]+)"', page)
+    assert match is not None
+    return output / match.group(1)
 
 
 def test_sphinx_embeds_multiple_prepared_reports_with_relative_assets(tmp_path):
@@ -56,6 +64,7 @@ def test_sphinx_embeds_multiple_prepared_reports_with_relative_assets(tmp_path):
     assert page.count("<benched-report ") == 2
     assert 'view="trend" metric="mean" x-axis="time"' in page
     assert 'data-theme="dark"' in page
+    assert 'benchmark="tests/test_parse.py::test_parse|size=100"' in page
     assert 'hide-controls="view,metric,x-axis,benchmark,machine,python,memory,theme"' in page
     assert 'python="3.11,3.12" memory="16,32"' in page
     assert 'data-theme="inherit"' in page
@@ -73,6 +82,13 @@ def test_sphinx_compiles_existing_results_with_selectors(tmp_path):
     source.mkdir()
     _configuration(source)
     run = load_run(FIXTURES / "canonical-run-v1.json")
+    other = replace(
+        run.measurements[0],
+        benchmark_id="tests/test_render.py::test_render|size=100",
+        nodeid="tests/test_render.py::test_render[100]",
+        name="test_render[100]",
+    )
+    run = replace(run, measurements=(*run.measurements, other))
     save_run(str(results), replace(run, run_id="first", started_at="2026-01-01T00:00:00+00:00", ended_at="2026-01-01T00:00:01+00:00"))
     save_run(str(results), replace(run, run_id="second", started_at="2026-01-02T00:00:00+00:00", ended_at="2026-01-02T00:00:01+00:00"))
     source.joinpath("index.rst").write_text(
@@ -81,6 +97,8 @@ def test_sphinx_compiles_existing_results_with_selectors(tmp_path):
 
 .. benched:: results
    :selector: latest
+   :benchmark-filter: *test_parse*
+   :benchmark: tests/test_parse.py::test_parse|size=100
    :view: comparison
 """,
         encoding="utf-8",
@@ -89,7 +107,71 @@ def test_sphinx_compiles_existing_results_with_selectors(tmp_path):
     assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
 
     report_path = next(output.glob("_static/benched/reports/results-*.json"))
-    assert json.loads(report_path.read_text(encoding="utf-8"))["source_run_ids"] == ["second"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["source_run_ids"] == ["second"]
+    assert [benchmark["benchmark_id"] for benchmark in report["benchmarks"]] == ["tests/test_parse.py::test_parse|size=100"]
+    page = output.joinpath("index.html").read_text(encoding="utf-8")
+    assert 'benchmark="tests/test_parse.py::test_parse|size=100"' in page
+
+
+def test_sphinx_rebuilds_when_prepared_report_changes(tmp_path):
+    source = tmp_path / "docs"
+    output = tmp_path / "html"
+    source.mkdir()
+    _configuration(source)
+    report_path = source / "report.json"
+    shutil.copyfile(FIXTURES / "canonical-report-v1.json", report_path)
+    source.joinpath("index.rst").write_text("Report\n======\n\n.. benched:: report.json\n", encoding="utf-8")
+
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+    first_embedded = _embedded_report_path(output)
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["warnings"] = ["Report changed"]
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+
+    second_embedded = _embedded_report_path(output)
+    assert second_embedded != first_embedded
+    assert json.loads(second_embedded.read_text(encoding="utf-8"))["warnings"] == ["Report changed"]
+
+
+def test_sphinx_rebuilds_when_local_results_change(tmp_path):
+    source = tmp_path / "docs"
+    output = tmp_path / "html"
+    results = source / "results"
+    source.mkdir()
+    _configuration(source)
+    run = load_run(FIXTURES / "canonical-run-v1.json")
+    save_run(
+        str(results),
+        replace(
+            run,
+            run_id="first",
+            started_at="2026-01-01T00:00:00+00:00",
+            ended_at="2026-01-01T00:00:01+00:00",
+        ),
+    )
+    source.joinpath("index.rst").write_text("Report\n======\n\n.. benched:: results\n", encoding="utf-8")
+
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+    first_embedded = _embedded_report_path(output)
+    assert json.loads(first_embedded.read_text(encoding="utf-8"))["source_run_ids"] == ["first"]
+
+    save_run(
+        str(results),
+        replace(
+            run,
+            run_id="second",
+            started_at="2026-01-02T00:00:00+00:00",
+            ended_at="2026-01-02T00:00:01+00:00",
+        ),
+    )
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+
+    second_embedded = _embedded_report_path(output)
+    assert second_embedded != first_embedded
+    assert json.loads(second_embedded.read_text(encoding="utf-8"))["source_run_ids"] == ["first", "second"]
 
 
 def test_sphinx_transforms_report_before_writing_static_data(tmp_path):

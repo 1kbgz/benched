@@ -47,12 +47,20 @@ results_dir = ".benched/results"
 [tool.benched.subject]
 name = "my-package"
 distribution = "my-package"
+
+[tool.benched.env]
+MKL_NUM_THREADS = "1"
+OMP_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
 ```
 
 `results_dir` accepts any fsspec URL. Local files need no additional configuration;
 remote protocols need their normal backend package and credentials. Backend options
 can be supplied in `[tool.benched.storage_options]`, but environment- or profile-based
 credentials are preferable to secrets in `pyproject.toml`.
+
+`[tool.benched.env]` values override the parent environment for benchmark execution
+and collection without modifying the parent process.
 
 Report assets use Web Awesome for UI primitives and Lightweight Charts for plots. The
 renderer-neutral report pipeline feeds terminal, JSON, HTML, and third-party
@@ -115,7 +123,13 @@ benched history --machine ci --python 3.12.13
 benched show latest --benchmark "*test_parse*" --parameter size=100
 benched compare previous latest --metric median
 benched compare previous latest --fail-if median:10%
+benched compare previous latest --fail-if peak_memory:10%
 ```
+
+Each `benched run` records the pytest subprocess's peak resident set size as a
+`peak_memory` measurement in bytes. It is available to reports and `--metric`
+without a benchmark-side sampling fixture. All benchmarks executed in one pytest
+subprocess share that process peak; this measures resident memory, not allocations.
 
 Available comparison metrics are `median`, `mean`, `min`, `max`, and `ops`. Percentage
 and absolute gates fail only when regression exceeds threshold; equality is allowed.
@@ -223,8 +237,12 @@ extensions = ["benched.sphinx"]
 ```
 
 For a results directory, omit `:selector:` to include all successful runs or provide
-space-separated selectors such as `:selector: previous latest`. JSON and packaged
-assets are copied beneath Sphinx's `_static/benched` output with page-relative URLs.
+space-separated selectors such as `:selector: previous latest`. Use
+`:benchmark-filter: *test_parse*` to limit the benchmarks compiled from stored runs.
+`:benchmark:` takes one exact benchmark ID and preselects it in the embedded component;
+it does not filter report compilation. JSON and packaged assets are copied beneath
+Sphinx's `_static/benched` output with page-relative URLs. Local report files and
+results directories are rebuilt when their contents change.
 Sphinx embeds use `theme="inherit"` by default; set `:theme: light` or `:theme: dark`
 to override the surrounding page.
 The `benched-process-report` event can return a validated replacement report before

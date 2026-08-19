@@ -7,7 +7,7 @@ from typing import Literal
 from .model import Measurement, Run
 from .query import RunFilters, filter_measurements
 
-SUPPORTED_METRICS = ("median", "mean", "min", "max", "ops")
+SUPPORTED_METRICS = ("median", "mean", "min", "max", "ops", "peak_memory")
 
 ComparisonStatus = Literal["improved", "regressed", "unchanged", "added", "removed", "incompatible"]
 
