@@ -114,6 +114,73 @@ def test_sphinx_compiles_existing_results_with_selectors(tmp_path):
     assert 'benchmark="tests/test_parse.py::test_parse|size=100"' in page
 
 
+def test_sphinx_compiles_latest_measurement_per_benchmark(tmp_path):
+    source = tmp_path / "docs"
+    output = tmp_path / "html"
+    results = source / "results"
+    source.mkdir()
+    _configuration(source)
+    run = load_run(FIXTURES / "canonical-run-v1.json")
+    second = replace(run.measurements[0], benchmark_id="second", name="second")
+    save_run(
+        str(results),
+        replace(run, run_id="old", ended_at="2026-01-01T00:00:01+00:00", measurements=(*run.measurements, second)),
+    )
+    save_run(str(results), replace(run, run_id="new", ended_at="2026-01-02T00:00:01+00:00"))
+    source.joinpath("index.rst").write_text(
+        "Report\n======\n\n.. benched:: results\n   :selector: latest-per-benchmark\n",
+        encoding="utf-8",
+    )
+
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+
+    report_path = next(output.glob("_static/benched/reports/results-*.json"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["source_run_ids"] == ["old", "new"]
+    assert {benchmark["benchmark_id"] for benchmark in report["benchmarks"]} == {run.measurements[0].benchmark_id, "second"}
+    assert all(len(benchmark["series"]) == 1 for benchmark in report["benchmarks"])
+
+
+def test_sphinx_report_preset_supplies_defaults(tmp_path):
+    source = tmp_path / "docs"
+    output = tmp_path / "html"
+    results = source / "results"
+    source.mkdir()
+    _configuration(source)
+    source.joinpath("pyproject.toml").write_text(
+        """
+[tool.benched.reports.parse]
+benchmark = "*test_parse*"
+metric = "mean"
+view = "trend"
+latest = 1
+""".strip(),
+        encoding="utf-8",
+    )
+    run = load_run(FIXTURES / "canonical-run-v1.json")
+    save_run(str(results), replace(run, run_id="old", ended_at="2026-01-01T00:00:01+00:00"))
+    save_run(str(results), replace(run, run_id="new", ended_at="2026-01-02T00:00:01+00:00"))
+    source.joinpath("index.rst").write_text(
+        "Report\n======\n\n.. benched:: results\n   :preset: parse\n",
+        encoding="utf-8",
+    )
+
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) == 0
+
+    page = output.joinpath("index.html").read_text(encoding="utf-8")
+    assert 'view="trend"' in page
+    assert 'metric="mean"' in page
+    report_path = next(output.glob("_static/benched/reports/results-*.json"))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["source_run_ids"] == ["new"]
+
+    source.joinpath("index.rst").write_text(
+        "Report\n======\n\n.. benched:: results\n   :preset: missing\n",
+        encoding="utf-8",
+    )
+    assert build_main(["-W", "-b", "html", str(source), str(output)]) != 0
+
+
 def test_sphinx_rebuilds_when_prepared_report_changes(tmp_path):
     source = tmp_path / "docs"
     output = tmp_path / "html"

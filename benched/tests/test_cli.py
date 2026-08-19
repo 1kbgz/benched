@@ -147,3 +147,164 @@ def test_report_writes_json_and_static_html_from_latest_success(tmp_path, capsys
     assert (output / "index.html").is_file()
     assert (output / "assets/benched.js").is_file()
     assert "wrote html" in capsys.readouterr().out
+
+
+def test_report_coalesces_latest_measurement_per_benchmark(tmp_path, capsys):
+    pyproject = _pyproject(tmp_path)
+    old = _save_comparison_run(tmp_path, "old-run", "2026-01-01T00:00:00+00:00", 10.0)
+    second = replace(old.measurements[0], benchmark_id="second", name="second", stats={"median": 20.0})
+    save_run(str(tmp_path / "results"), replace(old, run_id="old-complete", measurements=(*old.measurements, second)))
+    _save_comparison_run(tmp_path, "new-partial", "2026-01-02T00:00:00+00:00", 9.0)
+    output = tmp_path / "coalesced"
+
+    exit_code = main(
+        [
+            "report",
+            "--latest-per-benchmark",
+            "--format",
+            "json",
+            "--output",
+            str(output),
+            "--pyproject",
+            str(pyproject),
+        ]
+    )
+
+    report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert report["source_run_ids"] == ["old-complete", "new-partial"]
+    assert {benchmark["benchmark_id"] for benchmark in report["benchmarks"]} == {old.measurements[0].benchmark_id, "second"}
+    assert all(len(benchmark["series"]) == 1 for benchmark in report["benchmarks"])
+
+    assert main(["report", "--latest-per-benchmark", "--latest", "1", "--pyproject", str(pyproject)]) == 2
+    assert "cannot be combined with --latest" in capsys.readouterr().err
+
+
+def test_report_preset_supplies_benchmark_metric_and_selection(tmp_path, capsys):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        f"""
+[project]
+name = "cli-suite"
+
+[tool.benched]
+results_dir = {str(tmp_path / "results")!r}
+
+[tool.benched.reports.parse]
+benchmark = "*test_parse*"
+metric = "mean"
+latest = 1
+""".strip(),
+        encoding="utf-8",
+    )
+    _save_comparison_run(tmp_path, "old-run", "2026-01-01T00:00:00+00:00", 10.0)
+    _save_comparison_run(tmp_path, "new-run", "2026-01-02T00:00:00+00:00", 9.0)
+    output = tmp_path / "preset"
+
+    exit_code = main(
+        ["report", "--preset", "parse", "--format", "terminal", "--format", "json", "--output", str(output), "--pyproject", str(pyproject)]
+    )
+
+    report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert report["source_run_ids"] == ["new-run"]
+    assert "metric mean" in capsys.readouterr().out
+
+    assert main(["report", "--preset", "missing", "--pyproject", str(pyproject)]) == 2
+    assert "unknown report preset 'missing'; available: parse" in capsys.readouterr().err
+
+
+def test_compare_baseline_reports_within_run_ratios(tmp_path, capsys):
+    pyproject = _pyproject(tmp_path)
+    source = load_run(FIXTURES / "canonical-run-v1.json")
+    template = source.measurements[0]
+    measurements = tuple(
+        replace(
+            template,
+            benchmark_id=f"tests/test_solve.py::test_solve|size=10&solver=%22{solver}%22",
+            parameters={"solver": solver, "size": 10},
+            stats={"median": median},
+        )
+        for solver, median in (("mosek", 1.0), ("internal", 3.0))
+    )
+    save_run(str(tmp_path / "results"), replace(source, run_id="solver-run", measurements=measurements))
+
+    exit_code = main(["compare", "latest", "--baseline", "solver=mosek", "--pyproject", str(pyproject)])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "run solver-run  baseline solver=mosek  metric median" in output
+    assert "regressed" in output
+
+    assert main(["compare", "latest", "previous", "--baseline", "solver=mosek", "--pyproject", str(pyproject)]) == 2
+    assert "within a single run" in capsys.readouterr().err
+
+
+def test_export_writes_csv_with_parameter_columns(tmp_path, capsys):
+    pyproject = _pyproject(tmp_path)
+    _save_comparison_run(tmp_path, "run-a", "2026-01-01T00:00:00+00:00", 10.0)
+    _save_comparison_run(tmp_path, "run-b", "2026-01-02T00:00:00+00:00", 9.0)
+    output = tmp_path / "history.csv"
+
+    exit_code = main(["export", "--output", str(output), "--pyproject", str(pyproject)])
+
+    lines = output.read_text(encoding="utf-8").splitlines()
+    assert exit_code == 0
+    assert "wrote csv" in capsys.readouterr().out
+    assert lines[0].startswith("run_id,")
+    assert ",size," in lines[0]
+    assert len(lines) == 3
+
+
+def test_compact_archives_history_and_keeps_it_queryable(tmp_path, capsys):
+    pyproject = _pyproject(tmp_path)
+    _save_comparison_run(tmp_path, "run-a", "2026-01-01T00:00:00+00:00", 10.0)
+    _save_comparison_run(tmp_path, "run-b", "2026-01-02T00:00:00+00:00", 9.0)
+
+    assert main(["compact", "--keep", "1", "--pyproject", str(pyproject)]) == 0
+    assert "archived 1 runs into" in capsys.readouterr().out
+
+    assert main(["history", "--pyproject", str(pyproject)]) == 0
+    output = capsys.readouterr().out
+    assert "run-a" in output
+    assert "run-b" in output
+
+    assert main(["compact", "--keep", "1", "--pyproject", str(pyproject)]) == 0
+    assert "nothing to compact" in capsys.readouterr().out
+
+
+def test_aliases_unify_renamed_benchmark_history(tmp_path, capsys):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        f"""
+[project]
+name = "cli-suite"
+
+[tool.benched]
+results_dir = {str(tmp_path / "results")!r}
+
+[tool.benched.aliases.benchmarks]
+"suite.Old.time_parse" = "tests/test_parse.py::test_parse"
+
+[tool.benched.aliases.parameters]
+problem_size = "size"
+""".strip(),
+        encoding="utf-8",
+    )
+    old = _save_comparison_run(tmp_path, "imported-run", "2026-01-01T00:00:00+00:00", 10.0)
+    renamed = replace(
+        old.measurements[0],
+        benchmark_id="suite.Old.time_parse|problem_size=100",
+        nodeid="suite.Old.time_parse",
+        name="suite.Old.time_parse",
+        parameters={"problem_size": 100},
+    )
+    save_run(str(tmp_path / "results"), replace(old, run_id="asv-run", ended_at="2025-12-01T00:00:00+00:00", measurements=(renamed,)))
+    output = tmp_path / "aliased"
+
+    exit_code = main(["report", "--format", "json", "--output", str(output), "--pyproject", str(pyproject)])
+
+    report = json.loads((output / "report.json").read_text(encoding="utf-8"))
+    assert exit_code == 0
+    assert [benchmark["benchmark_id"] for benchmark in report["benchmarks"]] == ["tests/test_parse.py::test_parse|size=100"]
+    assert [point["run_id"] for point in report["benchmarks"][0]["series"]] == ["asv-run", "imported-run"]

@@ -11,11 +11,11 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 from . import __version__
 from .identity import machine_fingerprint
 from .model import EnvironmentInfo, Identity, MachineInfo, Measurement, Provenance, Run, ToolInfo
+from .query import encode_benchmark_id
 from .storage import read_runs, save_run
 
 
@@ -201,16 +201,6 @@ def _parameter(value: Any) -> Any:
         return value
 
 
-def _benchmark_id(name: str, parameters: dict[str, Any]) -> str:
-    if not parameters:
-        return name
-    encoded = "&".join(
-        f"{quote(key, safe='')}={quote(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True), safe='')}"
-        for key, value in sorted(parameters.items())
-    )
-    return f"{name}|{encoded}"
-
-
 def _row(document: dict[str, Any], name: str, raw: Any, version: int) -> dict[str, Any]:
     if version == 1:
         return {"result": raw}
@@ -303,7 +293,7 @@ def _measurements(document: dict[str, Any], benchmarks: dict[str, Any], version:
             options = {key: value for key, value in metadata.items() if key not in {"code", "name", "param_names", "params", "unit", "version"}}
             measurements.append(
                 Measurement(
-                    benchmark_id=_benchmark_id(name, parameters),
+                    benchmark_id=encode_benchmark_id(name, parameters),
                     nodeid=name,
                     name=name,
                     group=name.rpartition(".")[0] or None,

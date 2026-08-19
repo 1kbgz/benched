@@ -111,3 +111,60 @@ def test_rejects_invalid_benchmark_paths(tmp_path):
 
     with pytest.raises(ConfigError, match="benchmark_paths must be a non-empty array of strings"):
         load_config(pyproject, environ={})
+
+
+def test_loads_aliases_and_report_presets(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        """
+[tool.benched.aliases.benchmarks]
+"suite.Old.time_solve" = "tests/test_solver.py::test_solve"
+
+[tool.benched.aliases.parameters]
+problem_size = "n_assets"
+
+[tool.benched.reports.solver]
+benchmark = "*test_solver*"
+metric = "median"
+view = "trend"
+latest_per_benchmark = true
+
+[tool.benched.reports.recent]
+latest = 5
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = load_config(pyproject, environ={})
+
+    assert config.aliases.benchmarks == {"suite.Old.time_solve": "tests/test_solver.py::test_solve"}
+    assert config.aliases.parameters == {"problem_size": "n_assets"}
+    assert config.reports["solver"].benchmark == "*test_solver*"
+    assert config.reports["solver"].metric == "median"
+    assert config.reports["solver"].view == "trend"
+    assert config.reports["solver"].latest_per_benchmark is True
+    assert config.reports["recent"].latest == 5
+    assert config.reports["recent"].latest_per_benchmark is False
+
+
+@pytest.mark.parametrize(
+    ("table", "message"),
+    [
+        ("[tool.benched.aliases.machines]\nold = 'new'", r"unknown tool\.benched\.aliases keys: machines"),
+        ("[tool.benched.aliases.benchmarks]\nold = 1", r"tool\.benched\.aliases\.benchmarks keys and values must be non-empty strings"),
+        ("[tool.benched.reports.solver]\nglob = '*'", r"unknown tool\.benched\.reports\.solver keys: glob"),
+        ("[tool.benched.reports.solver]\nmetric = 'p99'", r"tool\.benched\.reports\.solver\.metric must be one of"),
+        ("[tool.benched.reports.solver]\nview = 'grid'", r"tool\.benched\.reports\.solver\.view must be one of"),
+        ("[tool.benched.reports.solver]\nlatest = 0", r"tool\.benched\.reports\.solver\.latest must be a positive integer"),
+        (
+            "[tool.benched.reports.solver]\nlatest = 2\nlatest_per_benchmark = true",
+            r"cannot combine latest with latest_per_benchmark",
+        ),
+    ],
+)
+def test_rejects_invalid_aliases_and_presets(tmp_path, table, message):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(table, encoding="utf-8")
+
+    with pytest.raises(ConfigError, match=message):
+        load_config(pyproject, environ={})

@@ -48,6 +48,7 @@ develop = [
     "jsonschema>=4.23",
     "mdformat",
     "mdformat-tables>=1",
+    "pyarrow",
     "pytest",
     "pytest-cov",
     "ruff",
@@ -56,6 +57,9 @@ develop = [
     "uv",
     "wheel",
     "yardang[themes]>=0.7.1",
+]
+export = [
+    "pyarrow",
 ]
 sphinx = [
     "sphinx>=7",

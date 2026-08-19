@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from typing import Any
-from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
 
 from . import __version__
 from .model import EnvironmentInfo, Identity, MachineInfo, Measurement, Provenance, Run, ToolInfo
+from .query import PEAK_MEMORY_SUFFIX, encode_benchmark_id
 
 
 class IngestError(ValueError):
@@ -30,13 +29,7 @@ def _string(value: Any, field_name: str) -> str:
 
 def _benchmark_id(nodeid: str, parameters: Mapping[str, Any]) -> str:
     base = nodeid.rsplit("[", 1)[0] if parameters and nodeid.endswith("]") else nodeid
-    if not parameters:
-        return base
-    encoded = "&".join(
-        f"{quote(str(name), safe='')}={quote(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True), safe='')}"
-        for name, value in sorted(parameters.items())
-    )
-    return f"{base}|{encoded}"
+    return encode_benchmark_id(base, parameters)
 
 
 def normalize_pytest_benchmark(
@@ -101,7 +94,7 @@ def normalize_pytest_benchmark(
         if isinstance(peak_memory, (int, float)) and not isinstance(peak_memory, bool) and peak_memory >= 0:
             measurements.append(
                 Measurement(
-                    benchmark_id=f"{benchmark_id}:peak-memory",
+                    benchmark_id=f"{benchmark_id}{PEAK_MEMORY_SUFFIX}",
                     nodeid=nodeid,
                     name=f"{name} peak memory",
                     group=group,

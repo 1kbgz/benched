@@ -8,12 +8,13 @@ from benched.compare import (
     CompareError,
     CompatibilityError,
     ThresholdError,
+    compare_baseline,
     compare_runs,
     parse_threshold,
     regression_gate,
 )
 from benched.model import load_run
-from benched.query import RunFilters
+from benched.query import RunFilters, encode_benchmark_id
 
 FIXTURES = Path(__file__).with_name("fixtures")
 
@@ -123,3 +124,50 @@ def test_rejects_filters_with_no_measurements():
 def test_invalid_threshold_is_actionable(value):
     with pytest.raises(ThresholdError):
         parse_threshold(value)
+
+
+def _solver_run(run_id="run", *, status="success"):
+    source = load_run(FIXTURES / "canonical-run-v1.json")
+    template = source.measurements[0]
+    measurements = tuple(
+        replace(
+            template,
+            benchmark_id=encode_benchmark_id("tests/test_solver.py::test_solve", parameters),
+            parameters=parameters,
+            stats={"median": median},
+        )
+        for parameters, median in (
+            ({"solver": "mosek", "size": 10}, 1.0),
+            ({"solver": "internal", "size": 10}, 2.0),
+            ({"solver": "mosek", "size": 20}, 4.0),
+            ({"solver": "internal", "size": 20}, 3.0),
+            ({"solver": "internal", "size": 30}, 9.0),
+        )
+    )
+    return replace(source, run_id=run_id, status=status, measurements=measurements)
+
+
+def test_baseline_pairs_variants_by_remaining_parameters():
+    result = compare_baseline(_solver_run(), key="solver", value="mosek")
+
+    assert result.base_run_id == result.head_run_id == "run"
+    assert [(difference.base, difference.head, difference.ratio, difference.status) for difference in result.differences] == [
+        (1.0, 2.0, 2.0, "regressed"),
+        (4.0, 3.0, 0.75, "improved"),
+    ]
+    assert result.warnings == ("no baseline measurement for tests/test_solver.py::test_solve|size=30&solver=%22internal%22",)
+
+
+def test_baseline_respects_measurement_filters():
+    result = compare_baseline(_solver_run(), key="solver", value="mosek", filters=RunFilters(parameters={"size": 10}))
+
+    assert len(result.differences) == 1
+    assert result.differences[0].ratio == 2.0
+
+
+def test_baseline_without_matching_measurements_is_actionable():
+    with pytest.raises(CompareError, match="no measurements match baseline solver='cplex'"):
+        compare_baseline(_solver_run(), key="solver", value="cplex")
+
+    with pytest.raises(BenchmarkRunError, match="unsuccessful run"):
+        compare_baseline(_solver_run(status="failed"), key="solver", value="mosek")
