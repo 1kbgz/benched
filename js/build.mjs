@@ -19,13 +19,10 @@ const BUNDLES = [
 
 async function build() {
   fs.rmSync("dist", { recursive: true, force: true });
-<<<<<<< before updating
-=======
   fs.rmSync("../benched/extension", {
     recursive: true,
     force: true,
   });
->>>>>>> after updating
 
   // Bundle css
   await bundle_css();
