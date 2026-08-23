@@ -26,13 +26,9 @@
   },
   "scripts": {
     "build:debug": "node build.mjs --debug",
-<<<<<<< before updating
-    "build": "node build.mjs && tsc",
-=======
     "build:prod": "node build.mjs",
     "build:types": "tsc",
     "build": "npm-run-all build:prod build:types",
->>>>>>> after updating
     "clean": "rm -rf dist playwright-report ../benched/extension",
     "dev": "npm-run-all -p start watch",
     "lint": "oxlint . && oxfmt --check \"src/**/*.{js,ts,jsx,tsx,css}\" \"tests/**/*.{js,ts,jsx,tsx}\" \"*.mjs\" \"*.json\"",
