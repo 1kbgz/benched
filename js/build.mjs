@@ -19,6 +19,10 @@ const BUNDLES = [
 
 async function build() {
   fs.rmSync("dist", { recursive: true, force: true });
+  fs.rmSync("../benched/extension", {
+    recursive: true,
+    force: true,
+  });
 
   // Bundle css
   await bundle_css();
@@ -47,4 +51,4 @@ async function build() {
   });
 }
 
-build();
+await build();
