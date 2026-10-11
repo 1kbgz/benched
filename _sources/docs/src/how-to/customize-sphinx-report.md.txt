@@ -101,7 +101,7 @@ external changes.
 This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:
 
-```{benched} ../../build/docs-results
+```{benched} ../../../build/docs-results
 :view: trend
 :metric: median
 :x-axis: version

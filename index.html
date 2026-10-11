@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Benched report example" href="docs/overview.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Benched report example" href="docs/src/overview.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>Benched v0.5.0</title>
@@ -199,11 +199,11 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul>
-<li class="toctree-l1"><a class="reference internal" href="docs/overview.html">Benched report example</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/how-to/run-in-prepared-environments.html">Run benchmarks in prepared environments</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/how-to/import-pytest-benchmark.html">How to import pytest-benchmark history</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/how-to/migrate-from-asv.html">How to migrate ASV history to Benched</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/how-to/customize-sphinx-report.html">How to embed and customize a Benched report in Sphinx</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/overview.html">Benched report example</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/how-to/run-in-prepared-environments.html">Run benchmarks in prepared environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/how-to/import-pytest-benchmark.html">How to import pytest-benchmark history</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/how-to/migrate-from-asv.html">How to migrate ASV history to Benched</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/how-to/customize-sphinx-report.html">How to embed and customize a Benched report in Sphinx</a></li>
 </ul>
 
 </div>
@@ -257,7 +257,7 @@
 commit-aware history and embeddable reports. Pytest and pytest-benchmark own
 collection, parameterization, fixtures, calibration, and statistics; Benched owns
 identity, storage, comparison, and presentation.</p>
-<p>See <a class="reference internal" href="docs/how-to/run-in-prepared-environments.html"><span class="std std-doc">How to run benchmarks in prepared environments</span></a>
+<p>See <a class="reference internal" href="docs/src/how-to/run-in-prepared-environments.html"><span class="std std-doc">How to run benchmarks in prepared environments</span></a>
 for current-Python, CI, Docker, CSP, and Laxate migration patterns.</p>
 <p>Current implementation runs ordinary pytest-benchmark tests in an isolated subprocess,
 normalizes their JSON, and records immutable run documents. Benchmark-suite identity
@@ -334,10 +334,10 @@ are ignored by Git.</p>
 <h2>Migration<a class="headerlink" href="#migration" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">import-pytest</span></code> imports existing pytest-benchmark 5.x JSON files or
 directories into canonical history. Imports retain source checksums, support dry-run
-and fsspec destinations, and skip repeated content. See <a class="reference internal" href="docs/how-to/import-pytest-benchmark.html"><span class="std std-doc">How to import
+and fsspec destinations, and skip repeated content. See <a class="reference internal" href="docs/src/how-to/import-pytest-benchmark.html"><span class="std std-doc">How to import
 pytest-benchmark history</span></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">benched</span> <span class="pre">import-asv</span></code> provides one-way, idempotent conversion of existing ASV v1 or v2
-result directories without installing or executing ASV. See <a class="reference internal" href="docs/how-to/migrate-from-asv.html"><span class="std std-doc">How to migrate ASV
+result directories without installing or executing ASV. See <a class="reference internal" href="docs/src/how-to/migrate-from-asv.html"><span class="std std-doc">How to migrate ASV
 history to Benched</span></a> for same-project and separate
 suite/subject examples.</p>
 <p>Renamed benchmarks and imported histories with different identities can be joined
@@ -504,7 +504,7 @@ results directories are rebuilt when their contents change.
 Sphinx embeds use <code class="docutils literal notranslate"><span class="pre">theme=&quot;inherit&quot;</span></code> by default; set <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code>
 to override the surrounding page.
 The <code class="docutils literal notranslate"><span class="pre">benched-process-report</span></code> event can return a validated replacement report before
-that JSON is written. See <a class="reference internal" href="docs/how-to/customize-sphinx-report.html"><span class="std std-doc">How to customize a Benched report in
+that JSON is written. See <a class="reference internal" href="docs/src/how-to/customize-sphinx-report.html"><span class="std std-doc">How to customize a Benched report in
 Sphinx</span></a>.</p>
 <p>MyST uses the same directive:</p>
 <div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span>```{benched} ../benchmarks/report.json
@@ -526,7 +526,7 @@ Sphinx</span></a>.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="docs/overview.html">
+          <a class="next-page" href="docs/src/overview.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
@@ -566,7 +566,7 @@ Sphinx</span></a>.</p>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="_static/benched/benched.js?v=fa4b0aa7"></script>
+    <script type="module" src="_static/benched/benched.js?v=952363b0"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script data-searchlite-index="searchlite-index.json" defer="defer" src="_static/searchlite.js?v=a5320898"></script>
     <script data-searchlite-adopt="true" defer="defer" src="_static/searchlite-ui.js?v=4e4bdd69"></script>

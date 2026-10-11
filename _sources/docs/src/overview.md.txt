@@ -12,7 +12,7 @@ Sphinx extension, and packaged Web Component. The documentation build records th
 current suite once, then backfills 30 revisions across five machines and three Python
 versions.
 
-```{benched} ../build/docs-results
+```{benched} ../../build/docs-results
 :view: trend
 :metric: median
 :x-axis: version
