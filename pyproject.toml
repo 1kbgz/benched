@@ -47,6 +47,7 @@ develop = [
     "hatchling",
     "jsonschema>=4.23",
     "mdformat",
+    "mdformat-frontmatter",
     "mdformat-tables>=1",
     "pyarrow",
     "pytest",
@@ -126,7 +127,7 @@ replace = '"version": "{new_version}"'
 [tool.coverage.run]
 branch = true
 omit = [
-    "benched/tests/integration/",
+    "benched/tests/integration/*",
 ]
 
 [tool.coverage.report]
