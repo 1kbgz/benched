@@ -292,18 +292,18 @@ def test_project_documentation_builds_with_embedded_report(tmp_path, monkeypatch
 
     yardang_build(output=str(output))
 
-    example_page = output.joinpath("docs/overview.html").read_text(encoding="utf-8")
+    example_page = output.joinpath("docs/src/overview.html").read_text(encoding="utf-8")
     assert "Benched report example" in example_page
     assert "<benched-report " in example_page
     assert 'view="trend" metric="median" x-axis="version"' in example_page
-    customize_page = output.joinpath("docs/how-to/customize-sphinx-report.html").read_text(encoding="utf-8")
+    customize_page = output.joinpath("docs/src/how-to/customize-sphinx-report.html").read_text(encoding="utf-8")
     assert "<benched-report " in customize_page
     assert 'view="trend" metric="median" x-axis="version"' in customize_page
     assert 'data-theme="inherit"' in customize_page
     assert 'hide-controls="view,metric,x-axis,benchmark,machine,python,memory"' in customize_page
-    assert output.joinpath("docs/how-to/import-pytest-benchmark.html").is_file()
-    assert output.joinpath("docs/how-to/migrate-from-asv.html").is_file()
-    assert output.joinpath("docs/how-to/run-in-prepared-environments.html").is_file()
+    assert output.joinpath("docs/src/how-to/import-pytest-benchmark.html").is_file()
+    assert output.joinpath("docs/src/how-to/migrate-from-asv.html").is_file()
+    assert output.joinpath("docs/src/how-to/run-in-prepared-environments.html").is_file()
     assert output.joinpath("_static/benched/benched.js").is_file()
     assert output.joinpath("_static/benched/benched.css").is_file()
     report_path = next(output.glob("_static/benched/reports/docs-results-*.json"))
