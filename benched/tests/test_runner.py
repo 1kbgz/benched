@@ -54,7 +54,11 @@ def test_length(benchmark, size):
     assert len(second.run.measurements) == 2
     assert {measurement.parameters["size"] for measurement in first.run.measurements} == {1, 3}
     assert len([measurement for measurement in first.run.measurements if measurement.unit == "bytes"]) == 2
-    assert all(measurement.stats["peak_memory"] > 0 for measurement in first.run.measurements if measurement.unit == "bytes")
+    for measurement in first.run.measurements:
+        if measurement.unit == "bytes":
+            peak_memory = measurement.stats["peak_memory"]
+            assert isinstance(peak_memory, (int, float))
+            assert peak_memory > 0
     assert all(measurement.samples is None for measurement in first.run.measurements)
     assert first.run.suite.name == "runner-suite"
     assert first.run.subject.name == "runner-suite"
@@ -81,7 +85,9 @@ def test_sum(benchmark):
     assert result.run.measurements[0].stats["rounds"] == 2
     assert len(result.run.measurements[0].samples or ()) == 2
     assert result.run.measurements[1].unit == "bytes"
-    assert result.run.measurements[1].stats["peak_memory"] > 0
+    peak_memory = result.run.measurements[1].stats["peak_memory"]
+    assert isinstance(peak_memory, (int, float))
+    assert peak_memory > 0
 
 
 def test_applies_configured_environment_to_benchmark_subprocess(tmp_path, monkeypatch):

@@ -81,11 +81,11 @@ results_dir = ".benched/results"
 title = "Benched"
 root = "README.md"
 pages = [
-    "docs/overview.md",
-    "docs/how-to/run-in-prepared-environments.md",
-    "docs/how-to/import-pytest-benchmark.md",
-    "docs/how-to/migrate-from-asv.md",
-    "docs/how-to/customize-sphinx-report.md",
+    "docs/src/overview.md",
+    "docs/src/how-to/run-in-prepared-environments.md",
+    "docs/src/how-to/import-pytest-benchmark.md",
+    "docs/src/how-to/migrate-from-asv.md",
+    "docs/src/how-to/customize-sphinx-report.md",
 ]
 use-autoapi = false
 extensions = ["benched.sphinx"]

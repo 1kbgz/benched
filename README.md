@@ -14,7 +14,7 @@ commit-aware history and embeddable reports. Pytest and pytest-benchmark own
 collection, parameterization, fixtures, calibration, and statistics; Benched owns
 identity, storage, comparison, and presentation.
 
-See [How to run benchmarks in prepared environments](docs/how-to/run-in-prepared-environments.md)
+See [How to run benchmarks in prepared environments](docs/src/how-to/run-in-prepared-environments.md)
 for current-Python, CI, Docker, CSP, and Laxate migration patterns.
 
 Current implementation runs ordinary pytest-benchmark tests in an isolated subprocess,
@@ -105,11 +105,11 @@ are ignored by Git.
 `benched import-pytest` imports existing pytest-benchmark 5.x JSON files or
 directories into canonical history. Imports retain source checksums, support dry-run
 and fsspec destinations, and skip repeated content. See [How to import
-pytest-benchmark history](docs/how-to/import-pytest-benchmark.md).
+pytest-benchmark history](docs/src/how-to/import-pytest-benchmark.md).
 
 `benched import-asv` provides one-way, idempotent conversion of existing ASV v1 or v2
 result directories without installing or executing ASV. See [How to migrate ASV
-history to Benched](docs/how-to/migrate-from-asv.md) for same-project and separate
+history to Benched](docs/src/how-to/migrate-from-asv.md) for same-project and separate
 suite/subject examples.
 
 Renamed benchmarks and imported histories with different identities can be joined
@@ -298,7 +298,7 @@ Sphinx embeds use `theme="inherit"` by default; set `:theme: light` or `:theme: 
 to override the surrounding page.
 The `benched-process-report` event can return a validated replacement report before
 that JSON is written. See [How to customize a Benched report in
-Sphinx](docs/how-to/customize-sphinx-report.md).
+Sphinx](docs/src/how-to/customize-sphinx-report.md).
 
 MyST uses the same directive:
 
