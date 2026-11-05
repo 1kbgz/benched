@@ -1232,6 +1232,7 @@ export class BenchedReport extends HTMLElement {
       const points = this.points(benchmark).filter(
         (point) => point.metrics[this.metric] != null,
       );
+      if (points.length === 0) continue;
       for (const point of points) {
         const time = pointTime(point);
         const bucket = values.get(time) ?? [];
@@ -1261,9 +1262,7 @@ export class BenchedReport extends HTMLElement {
         this.setAttribute("benchmark", benchmark.benchmark_id);
       });
       const latest = document.createElement("span");
-      latest.textContent = data.length
-        ? `${formatValue(data[data.length - 1].value)} ${benchmark.unit}`
-        : `No ${this.metric} data`;
+      latest.textContent = `${formatValue(data[data.length - 1].value)} ${benchmark.unit}`;
       header.append(link, latest);
       const chartContainer = document.createElement("div");
       chartContainer.className = "benched-mini-chart";
@@ -1273,7 +1272,6 @@ export class BenchedReport extends HTMLElement {
       );
       card.append(header, chartContainer);
       grid.append(card);
-      if (data.length === 0) continue;
 
       this.renderChartWhenVisible(chartContainer, () => {
         const chart = createChart(chartContainer, {
@@ -1312,6 +1310,12 @@ export class BenchedReport extends HTMLElement {
         line.setData(data);
         this.trackChart(chartContainer, chart);
       });
+    }
+    if (grid.childElementCount === 0) {
+      this.renderViewMessage(
+        container,
+        `No ${this.metric} data matches the selected filters.`,
+      );
     }
   }
 

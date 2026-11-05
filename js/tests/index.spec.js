@@ -916,6 +916,69 @@ test.describe("Benched report", () => {
     );
   });
 
+  for (const axis of ["version", "time"]) {
+    test(`renders only matching metrics in a mixed report by ${axis}`, async ({
+      page,
+    }) => {
+      const data = largeReport(4, 2);
+      const [timing, memory] = data.benchmarks;
+      for (const point of timing.series) point.metrics.peak_memory = null;
+      memory.name = "test_compile_report peak memory";
+      memory.unit = "bytes";
+      memory.series = memory.series.slice(0, 1);
+      for (const point of memory.series) {
+        point.metrics = {
+          median: null,
+          mean: null,
+          min: null,
+          max: null,
+          ops: null,
+          peak_memory: 67_108_864,
+        };
+      }
+      await page.route("**/mixed-report.json", (route) =>
+        route.fulfill({ contentType: "application/json", json: data }),
+      );
+      await page.goto("/");
+      const report = page.locator("benched-report");
+      await report.evaluate((element, axis) => {
+        element.setAttribute("src", "mixed-report.json");
+        element.setAttribute("view", "trend");
+        element.setAttribute("x-axis", axis);
+      }, axis);
+      await expect(report.locator(".benched-header small")).toHaveText(
+        "4 runs · 2 benchmarks",
+      );
+      const cards = report.locator(".benched-trend-card");
+      for (const metric of [
+        "median",
+        "mean",
+        "min",
+        "max",
+        "ops",
+        "peak_memory",
+      ]) {
+        await select(page, ".benched-metric-select", metric);
+        await expect(cards).toHaveCount(1);
+        await expect(cards.locator("a")).toHaveText(
+          metric === "peak_memory"
+            ? "test_compile_report peak memory"
+            : "test_compile_report[0]",
+        );
+        await expect(cards.locator("canvas").first()).toBeVisible();
+      }
+      await toggle(page, ".benched-machine-select", "linux-arm");
+      await expect(cards).toHaveCount(0);
+      await expect(report.locator(".benched-view-message")).toContainText(
+        "No peak_memory data matches the selected filters.",
+      );
+      await expect(report.locator(".benched-metric-select")).toBeVisible();
+      await select(page, ".benched-metric-select", "median");
+      await expect(cards).toHaveCount(1);
+      await expect(cards.locator("canvas").first()).toBeVisible();
+    });
+  }
+
   test("renders and filters a realistic large multi-machine report", async ({
     page,
   }, testInfo) => {
