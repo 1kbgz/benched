@@ -13,7 +13,7 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/benched/benched.css?v=8486d09b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/benched/benched.css?v=ead03eb6" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/custom.css?v=88c24c6a" />
@@ -22,7 +22,7 @@
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
-    <script type="module" src="../../../_static/benched/benched.js?v=952363b0"></script>
+    <script type="module" src="../../../_static/benched/benched.js?v=c595fb35"></script>
     <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script data-searchlite-index="searchlite-index.json" defer="defer" src="../../../_static/searchlite.js?v=a5320898"></script>
     <script defer="defer" src="../../../_static/fuma.js?v=9c325f6c"></script>
@@ -230,12 +230,24 @@ sources are read when Sphinx rebuilds the document, but cannot notify Sphinx abo
 external changes.</p>
 <p>This live example preselects two machines, two Python versions, and two memory buckets
 while omitting their controls:</p>
-<benched-report src="../../../_static/benched/reports/docs-results-2d30a8bbefb0.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
+<benched-report src="../../../_static/benched/reports/docs-results-5e107beac117.json" view="trend" metric="median" x-axis="version" data-theme="inherit" hide-controls="view,metric,x-axis,benchmark,machine,python,memory" machine="demo-linux-x86,demo-macos-arm" python="3.11,3.12" memory="16,32"></benched-report></section>
 <section id="match-the-surrounding-sphinx-theme">
 <h2>Match the surrounding Sphinx theme<a class="headerlink" href="#match-the-surrounding-sphinx-theme" title="Link to this heading">¶</a></h2>
-<p>Inherited reports automatically follow Furo, Sphinx Awesome, and Shibuya in light
-and dark modes. Benched uses each theme’s semantic colors for chart accents, grid
-lines, controls, surfaces, and text.</p>
+<p>Inherited reports automatically match Furo, Fuma, Sphinx Awesome, PyData, and
+Shibuya. No theme-specific Benched configuration is required. Benched uses the
+theme’s semantic colors for chart accents, grid lines, controls, surfaces, and
+text, and redraws charts when those colors change.</p>
+<ul class="simple">
+<li><p>Furo: <code class="docutils literal notranslate"><span class="pre">--color-*</span></code> colors; <code class="docutils literal notranslate"><span class="pre">body[data-theme]</span></code> mode.</p></li>
+<li><p>Fuma: <code class="docutils literal notranslate"><span class="pre">--color-fd-*</span></code> colors; root <code class="docutils literal notranslate"><span class="pre">light</span></code> / <code class="docutils literal notranslate"><span class="pre">dark</span></code> classes.</p></li>
+<li><p>Sphinx Awesome: <code class="docutils literal notranslate"><span class="pre">--color-*</span></code> colors; root <code class="docutils literal notranslate"><span class="pre">dark</span></code> class.</p></li>
+<li><p>PyData: <code class="docutils literal notranslate"><span class="pre">--pst-color-*</span></code> colors; root <code class="docutils literal notranslate"><span class="pre">data-theme</span></code> / <code class="docutils literal notranslate"><span class="pre">data-mode</span></code> attributes.</p></li>
+<li><p>Shibuya: <code class="docutils literal notranslate"><span class="pre">--sy-c-*</span></code> colors; root <code class="docutils literal notranslate"><span class="pre">light</span></code> / <code class="docutils literal notranslate"><span class="pre">dark</span></code> classes.</p></li>
+</ul>
+<p>The host’s selected mode takes precedence over background brightness and the OS
+color preference. In automatic mode, reports follow the theme’s resolved colors
+and OS preference. Unknown themes fall back to the surrounding background and
+color scheme. Standalone reports keep their own theme selection.</p>
 <p>Override any inferred color from your documentation CSS:</p>
 <div class="highlight-css notranslate"><div class="highlight"><pre><span></span><span class="nt">benched-report</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nv">--benched-accent-color</span><span class="p">:</span><span class="w"> </span><span class="mh">#7c3aed</span><span class="p">;</span>
@@ -246,8 +258,12 @@ lines, controls, surfaces, and text.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>These overrides apply when the report uses <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">inherit</span></code>. Use selectors from
-your Sphinx theme when an override should differ between light and dark modes.</p>
+<p>These overrides take precedence over detected theme colors when the report uses
+<code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">inherit</span></code>. Use selectors from your Sphinx theme when an override should
+differ between light and dark modes. Modern CSS colors such as <code class="docutils literal notranslate"><span class="pre">oklch()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">color-mix()</span></code> are supported when the browser supports them.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">light</span></code> or <code class="docutils literal notranslate"><span class="pre">:theme:</span> <span class="pre">dark</span></code> to opt out of host theme matching for an
+individual report.</p>
 </section>
 <section id="connect-a-report-transformer">
 <h2>Connect a report transformer<a class="headerlink" href="#connect-a-report-transformer" title="Link to this heading">¶</a></h2>
