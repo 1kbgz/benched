@@ -246,7 +246,7 @@ export class BenchedReport extends HTMLElement {
 
   private readonly handleMediaChange = (event: MediaQueryListEvent) => {
     if (this.inheritsTheme()) {
-      this.setTheme(this.inheritedTheme());
+      this.updateInheritedTheme();
     } else if (!this.savedTheme() && !this.getAttribute("data-theme")) {
       this.setTheme(event.matches ? "dark" : "light");
     }
@@ -356,7 +356,22 @@ export class BenchedReport extends HTMLElement {
       element;
       element = element.parentElement
     ) {
-      const match = getComputedStyle(element).backgroundColor.match(
+      const mode = element.getAttribute("data-theme");
+      if (mode === "light" || mode === "dark") return mode;
+      if (element.classList.contains("dark")) return "dark";
+      if (element.classList.contains("light")) return "light";
+      if (mode === "auto" || element.getAttribute("data-mode") === "auto")
+        return this.media?.matches ? "dark" : "light";
+    }
+    for (
+      let element: HTMLElement | null = parent;
+      element;
+      element = element.parentElement
+    ) {
+      const match = chartColor(
+        element,
+        getComputedStyle(element).backgroundColor,
+      ).match(
         /^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)(?:[, /]+\s*([\d.]+))?\s*\)$/,
       );
       if (!match || (match[4] !== undefined && Number(match[4]) === 0))
@@ -376,17 +391,7 @@ export class BenchedReport extends HTMLElement {
     this.themeObserver?.disconnect();
     this.inheritedChartStyle = this.chartStyleSignature();
     this.themeObserver = new MutationObserver(() => {
-      if (!this.inheritsTheme()) return;
-      const theme = this.inheritedTheme();
-      if (theme !== this.theme) {
-        this.setTheme(theme);
-        this.inheritedChartStyle = this.chartStyleSignature();
-        return;
-      }
-      const chartStyle = this.chartStyleSignature();
-      if (chartStyle === this.inheritedChartStyle) return;
-      this.inheritedChartStyle = chartStyle;
-      if (this.report) this.render();
+      if (this.inheritsTheme()) this.updateInheritedTheme();
     });
     for (
       let element = this.parentElement;
@@ -395,15 +400,30 @@ export class BenchedReport extends HTMLElement {
     ) {
       this.themeObserver.observe(element, {
         attributes: true,
-        attributeFilter: ["class", "style", "data-theme"],
+        attributeFilter: ["class", "style", "data-theme", "data-mode"],
       });
     }
+  }
+
+  private updateInheritedTheme() {
+    const theme = this.inheritedTheme();
+    if (theme !== this.theme) {
+      this.setTheme(theme);
+      this.inheritedChartStyle = this.chartStyleSignature();
+      return;
+    }
+    const chartStyle = this.chartStyleSignature();
+    if (chartStyle === this.inheritedChartStyle) return;
+    this.inheritedChartStyle = chartStyle;
+    if (this.report) this.render();
   }
 
   private chartStyleSignature(): string {
     const style = getComputedStyle(this);
     return [
       style.color,
+      style.getPropertyValue("--benched-text-color"),
+      style.getPropertyValue("--_benched-text-color"),
       style.getPropertyValue("--_benched-grid-color"),
       ...SERIES_COLORS.map(([property]) => style.getPropertyValue(property)),
     ].join("\u0000");
@@ -1001,7 +1021,12 @@ export class BenchedReport extends HTMLElement {
     container.append(title, value, legend, chartContainer);
 
     const style = getComputedStyle(this);
-    const textColor = chartColor(this, style.color);
+    const textColor = chartColor(
+      this,
+      style.getPropertyValue("--_benched-text-color").trim() ||
+        style.getPropertyValue("--benched-text-color").trim() ||
+        style.color,
+    );
     const gridColor = chartColor(
       this,
       style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
@@ -1186,7 +1211,12 @@ export class BenchedReport extends HTMLElement {
       return (Math.floor(timestamp / 86_400_000) * 86_400) as UTCTimestamp;
     };
     const style = getComputedStyle(this);
-    const textColor = chartColor(this, style.color);
+    const textColor = chartColor(
+      this,
+      style.getPropertyValue("--_benched-text-color").trim() ||
+        style.getPropertyValue("--benched-text-color").trim() ||
+        style.color,
+    );
     const gridColor = chartColor(
       this,
       style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",

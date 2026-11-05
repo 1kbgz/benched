@@ -113,9 +113,21 @@ while omitting their controls:
 
 ## Match the surrounding Sphinx theme
 
-Inherited reports automatically follow Furo, Sphinx Awesome, and Shibuya in light
-and dark modes. Benched uses each theme's semantic colors for chart accents, grid
-lines, controls, surfaces, and text.
+Inherited reports automatically match Furo, Fuma, Sphinx Awesome, PyData, and
+Shibuya. No theme-specific Benched configuration is required. Benched uses the
+theme's semantic colors for chart accents, grid lines, controls, surfaces, and
+text, and redraws charts when those colors change.
+
+- Furo: `--color-*` colors; `body[data-theme]` mode.
+- Fuma: `--color-fd-*` colors; root `light` / `dark` classes.
+- Sphinx Awesome: `--color-*` colors; root `dark` class.
+- PyData: `--pst-color-*` colors; root `data-theme` / `data-mode` attributes.
+- Shibuya: `--sy-c-*` colors; root `light` / `dark` classes.
+
+The host's selected mode takes precedence over background brightness and the OS
+color preference. In automatic mode, reports follow the theme's resolved colors
+and OS preference. Unknown themes fall back to the surrounding background and
+color scheme. Standalone reports keep their own theme selection.
 
 Override any inferred color from your documentation CSS:
 
@@ -129,8 +141,13 @@ benched-report {
 }
 ```
 
-These overrides apply when the report uses `:theme: inherit`. Use selectors from
-your Sphinx theme when an override should differ between light and dark modes.
+These overrides take precedence over detected theme colors when the report uses
+`:theme: inherit`. Use selectors from your Sphinx theme when an override should
+differ between light and dark modes. Modern CSS colors such as `oklch()` and
+`color-mix()` are supported when the browser supports them.
+
+Use `:theme: light` or `:theme: dark` to opt out of host theme matching for an
+individual report.
 
 ## Connect a report transformer
 
