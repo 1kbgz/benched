@@ -28,7 +28,16 @@ benched-report[data-theme="inherit"] {
     --benched-accent-color,
     var(
       --color-brand-primary,
-      var(--color-primary, var(--sy-c-link, var(--wa-color-brand-60, #2563eb)))
+      var(
+        --color-fd-primary,
+        var(
+          --pst-color-primary,
+          var(
+            --color-primary,
+            var(--sy-c-link, var(--wa-color-brand-60, #2563eb))
+          )
+        )
+      )
     )
   );
   --_benched-grid-color: var(
@@ -36,8 +45,17 @@ benched-report[data-theme="inherit"] {
     var(
       --color-background-border,
       var(
-        --color-border,
-        var(--sy-c-divider, color-mix(in srgb, currentColor 22%, transparent))
+        --color-fd-border,
+        var(
+          --pst-color-border,
+          var(
+            --color-border,
+            var(
+              --sy-c-divider,
+              color-mix(in srgb, currentColor 22%, transparent)
+            )
+          )
+        )
       )
     )
   );
@@ -46,8 +64,14 @@ benched-report[data-theme="inherit"] {
     var(
       --color-foreground-muted,
       var(
-        --color-muted-foreground,
-        var(--sy-c-light, var(--_benched-muted-fallback))
+        --color-fd-muted-foreground,
+        var(
+          --pst-color-text-muted,
+          var(
+            --color-muted-foreground,
+            var(--sy-c-light, var(--_benched-muted-fallback))
+          )
+        )
       )
     )
   );
@@ -57,8 +81,14 @@ benched-report[data-theme="inherit"] {
     var(
       --color-background-primary,
       var(
-        --color-background,
-        var(--sy-c-background, var(--_benched-surface-fallback))
+        --color-fd-background,
+        var(
+          --pst-color-background,
+          var(
+            --color-background,
+            var(--sy-c-background, var(--_benched-surface-fallback))
+          )
+        )
       )
     )
   );
@@ -67,7 +97,16 @@ benched-report[data-theme="inherit"] {
     --benched-text-color,
     var(
       --color-foreground-primary,
-      var(--color-foreground, var(--sy-c-text, var(--_benched-text-fallback)))
+      var(
+        --color-fd-foreground,
+        var(
+          --pst-color-text-base,
+          var(
+            --color-foreground,
+            var(--sy-c-text, var(--_benched-text-fallback))
+          )
+        )
+      )
     )
   );
   --_benched-text-fallback: var(--wa-color-neutral-10, #101219);
@@ -259,6 +298,14 @@ body:has(> benched-report.wa-dark:only-child) {
 .benched-chart {
   min-height: 480px;
   width: 100%;
+}
+
+benched-report :is(.benched-chart, .benched-mini-chart) :is(table, tr, td) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .benched-trend-description {

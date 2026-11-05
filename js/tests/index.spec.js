@@ -79,7 +79,7 @@ function largeReport(runCount = 44, benchmarkCount = 615) {
   };
 }
 
-const YARDANG_THEMES = [
+const SPHINX_THEMES = [
   {
     name: "Furo",
     signal: "furo",
@@ -92,6 +92,17 @@ const YARDANG_THEMES = [
     },
   },
   {
+    name: "Fuma",
+    signal: "fuma",
+    tokens: {
+      accent: "--color-fd-primary",
+      grid: "--color-fd-border",
+      muted: "--color-fd-muted-foreground",
+      surface: "--color-fd-background",
+      text: "--color-fd-foreground",
+    },
+  },
+  {
     name: "Sphinx Awesome",
     signal: "sphinxawesome",
     tokens: {
@@ -100,6 +111,17 @@ const YARDANG_THEMES = [
       muted: "--color-muted-foreground",
       surface: "--color-background",
       text: "--color-foreground",
+    },
+  },
+  {
+    name: "PyData",
+    signal: "pydata",
+    tokens: {
+      accent: "--pst-color-primary",
+      grid: "--pst-color-border",
+      muted: "--pst-color-text-muted",
+      surface: "--pst-color-background",
+      text: "--pst-color-text-base",
     },
   },
   {
@@ -132,7 +154,7 @@ const THEME_PALETTES = {
   },
 };
 
-async function applyYardangTheme(page, theme, mode) {
+async function applySphinxTheme(page, theme, mode) {
   await page.evaluate(
     ({ mode, palette, signal, tokens }) => {
       const source =
@@ -145,9 +167,13 @@ async function applyYardangTheme(page, theme, mode) {
       if (signal === "furo") document.body.dataset.theme = mode;
       if (signal === "sphinxawesome")
         document.documentElement.classList.toggle("dark", mode === "dark");
-      if (signal === "shibuya") {
+      if (signal === "fuma" || signal === "shibuya") {
         document.documentElement.classList.remove("light", "dark");
         document.documentElement.classList.add(mode);
+      }
+      if (signal === "pydata") {
+        document.documentElement.dataset.mode = mode;
+        document.documentElement.dataset.theme = mode;
       }
     },
     { mode, palette: THEME_PALETTES[mode], ...theme },
@@ -529,8 +555,189 @@ test.describe("Benched report", () => {
     await expect(report).toHaveCSS("color", "rgb(22, 28, 36)");
   });
 
-  for (const theme of YARDANG_THEMES) {
+  for (const benchmark of [null, "tests/test_parse.py::test_parse|size=100"]) {
+    test(`isolates ${benchmark ? "detail" : "matrix"} chart layout from host tables`, async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.addStyleTag({
+        content: `
+          .fd-prose table {
+            width: 100%; margin: 1.25rem 0; border-collapse: separate;
+            border-spacing: 0; border: 1px solid gray; border-radius: 0.75rem;
+            font-size: 0.875rem; overflow: hidden;
+          }
+          .fd-prose td { border-bottom: 1px solid gray; padding: 0.75rem; }
+        `,
+      });
+      const report = page.locator("benched-report");
+      await expect(report.locator(".benched-summary-grid")).toBeVisible();
+      await report.evaluate((element, benchmark) => {
+        const host = document.createElement("main");
+        host.className = "fd-prose";
+        element.replaceWith(host);
+        element.setAttribute("view", "trend");
+        if (benchmark) element.setAttribute("benchmark", benchmark);
+        host.append(element);
+      }, benchmark);
+      const chart = report
+        .locator(benchmark ? ".benched-chart" : ".benched-mini-chart")
+        .first();
+      await expect(chart.locator("canvas").first()).toBeVisible();
+      const heights = await chart.evaluate(async (element) => {
+        const heights = [];
+        for (let frame = 0; frame < 10; frame += 1) {
+          await new Promise(requestAnimationFrame);
+          heights.push(element.getBoundingClientRect().height);
+        }
+        return heights;
+      });
+      expect(heights).toEqual(Array(10).fill(benchmark ? 480 : 240));
+      await expect(chart.locator("table")).toHaveCSS("margin", "0px");
+      await expect(chart.locator("td").first()).toHaveCSS(
+        "border-bottom-width",
+        "0px",
+      );
+      if (benchmark) {
+        await expect(report.locator(".benched-exact-values table")).toHaveCSS(
+          "border-top-width",
+          "1px",
+        );
+      }
+    });
+
+    test(`renders ${benchmark ? "detail" : "matrix"} charts with modern host colors`, async ({
+      page,
+    }) => {
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.goto("/");
+      const report = page.locator("benched-report");
+      await expect(report.locator(".benched-summary-grid")).toBeVisible();
+      await report.evaluate((element, benchmark) => {
+        const host = document.createElement("main");
+        host.style.backgroundColor = "rgb(18, 24, 32)";
+        host.style.color = "color(srgb 0.921569 0.921569 0.921569 / 0.9)";
+        host.style.setProperty(
+          "--benched-accent-color",
+          "oklch(62.8% 0.258 29.23)",
+        );
+        host.style.setProperty(
+          "--wa-color-orange-60",
+          "color(display-p3 0 0 1)",
+        );
+        element.replaceWith(host);
+        element.setAttribute("data-theme", "inherit");
+        element.setAttribute("view", "trend");
+        if (benchmark) element.setAttribute("benchmark", benchmark);
+        host.append(element);
+      }, benchmark);
+
+      const chart = report
+        .locator(benchmark ? ".benched-chart" : ".benched-mini-chart")
+        .first();
+      await expect(chart).toBeVisible();
+      await chart.scrollIntoViewIfNeeded();
+      await expect(chart.locator("canvas").first()).toBeVisible();
+      await expect
+        .poll(() =>
+          chart.evaluate((element) => {
+            const canvas = element.querySelector("canvas");
+            const pixels = canvas
+              .getContext("2d")
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            let red = 0;
+            let blue = 0;
+            let grid = 0;
+            for (let index = 0; index < pixels.length; index += 4) {
+              if (
+                pixels[index] > 200 &&
+                pixels[index + 1] < 60 &&
+                pixels[index + 2] < 60 &&
+                pixels[index + 3] > 200
+              )
+                red += 1;
+              if (
+                pixels[index] < 60 &&
+                pixels[index + 1] < 60 &&
+                pixels[index + 2] > 200 &&
+                pixels[index + 3] > 200
+              )
+                blue += 1;
+              if (
+                pixels[index] > 225 &&
+                pixels[index + 1] > 225 &&
+                pixels[index + 2] > 225 &&
+                pixels[index + 3] >= 45 &&
+                pixels[index + 3] <= 55
+              )
+                grid += 1;
+            }
+            return { red: red > 20, blue: blue > 20, grid: grid > 20 };
+          }),
+        )
+        .toMatchObject({
+          red: true,
+          grid: true,
+          ...(benchmark ? { blue: true } : {}),
+        });
+      expect(errors).toEqual([]);
+    });
+  }
+
+  for (const theme of SPHINX_THEMES) {
     test(`adapts to ${theme.name} light and dark modes`, async ({ page }) => {
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.emulateMedia({ colorScheme: "light" });
+      await page.goto("/");
+      await page.locator("benched-report").evaluate((element) => {
+        const host = document.createElement("main");
+        element.replaceWith(host);
+        element.setAttribute("data-theme", "inherit");
+        element.setAttribute("view", "trend");
+        host.append(element);
+      });
+
+      const report = page.locator("benched-report");
+      await applySphinxTheme(page, theme, "dark");
+      await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+      expect(await reportPalette(report)).toEqual(THEME_PALETTES.dark);
+      await expect(report.locator("canvas").first()).toBeVisible();
+      await expect(report.locator(".benched-theme-toggle")).toHaveCount(0);
+
+      const originalCanvas = await report
+        .locator("canvas")
+        .first()
+        .elementHandle();
+      await page.evaluate(({ signal, tokens }) => {
+        const source =
+          signal === "furo" ? document.body : document.documentElement;
+        source.style.setProperty(tokens.accent, "rgb(180, 90, 210)");
+      }, theme);
+      await expect
+        .poll(() => originalCanvas.evaluate((canvas) => canvas.isConnected))
+        .toBe(false);
+      expect((await reportPalette(report)).accent).toBe("rgb(180, 90, 210)");
+      await expect(report.locator("canvas").first()).toBeVisible();
+
+      await select(page, ".benched-benchmark-select", "benchmark-0");
+      await expect(
+        report.locator(".benched-chart canvas").first(),
+      ).toBeVisible();
+      await applySphinxTheme(page, theme, "light");
+      await expect(report).toHaveAttribute("data-resolved-theme", "light");
+      expect(await reportPalette(report)).toEqual(THEME_PALETTES.light);
+      await expect(
+        report.locator(".benched-chart canvas").first(),
+      ).toBeVisible();
+      expect(errors).toEqual([]);
+    });
+
+    test(`respects ${theme.name} mode signals over surface brightness`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto("/");
       await page.locator("benched-report").evaluate((element) => {
         const host = document.createElement("main");
@@ -538,15 +745,144 @@ test.describe("Benched report", () => {
         element.setAttribute("data-theme", "inherit");
         host.append(element);
       });
+      await applySphinxTheme(page, theme, "dark");
+      await page.locator("body").evaluate((body) => {
+        body.style.backgroundColor = "white";
+      });
+      await expect(page.locator("benched-report")).toHaveAttribute(
+        "data-resolved-theme",
+        "dark",
+      );
+    });
+  }
 
+  test("follows OS changes in inherited auto mode", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/");
+    await page.addStyleTag({
+      content: `
+      body[data-theme="auto"] { background: white; color: black; }
+      @media (prefers-color-scheme: dark) {
+        body[data-theme="auto"] { background: color(srgb 0.05 0.05 0.05); color: white; }
+      }
+    `,
+    });
+    const report = page.locator("benched-report");
+    await report.evaluate((element) => {
+      const host = document.createElement("main");
+      element.replaceWith(host);
+      document.body.dataset.theme = "auto";
+      element.setAttribute("data-theme", "inherit");
+      element.setAttribute("view", "trend");
+      host.append(element);
+    });
+    await expect(report).toHaveAttribute("data-resolved-theme", "light");
+    await expect(report.locator("canvas").first()).toBeVisible();
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+    await expect(report.locator("canvas").first()).toBeVisible();
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(report).toHaveAttribute("data-resolved-theme", "light");
+  });
+
+  test("preserves explicit report modes and custom palette overrides", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const report = page.locator("benched-report");
+    await report.evaluate((element) => {
+      const host = document.createElement("main");
+      element.replaceWith(host);
+      element.setAttribute("data-theme", "inherit");
+      element.style.setProperty("--benched-accent-color", "rgb(180, 90, 210)");
+      element.style.setProperty("--benched-grid-color", "rgb(60, 70, 80)");
+      element.style.setProperty("--benched-muted-color", "rgb(100, 110, 120)");
+      element.style.setProperty("--benched-surface-color", "rgb(20, 30, 40)");
+      element.style.setProperty("--benched-text-color", "rgb(230, 240, 250)");
+      host.append(element);
+    });
+    const theme = SPHINX_THEMES.find((theme) => theme.signal === "fuma");
+    for (const mode of ["dark", "light"]) {
+      await applySphinxTheme(page, theme, mode);
+      await expect(report).toHaveAttribute("data-resolved-theme", mode);
+      expect(await reportPalette(report)).toEqual({
+        accent: "rgb(180, 90, 210)",
+        grid: "rgb(60, 70, 80)",
+        muted: "rgb(100, 110, 120)",
+        surface: "rgb(20, 30, 40)",
+        text: "rgb(230, 240, 250)",
+      });
+    }
+    await report.evaluate((element) =>
+      element.setAttribute("data-theme", "dark"),
+    );
+    await applySphinxTheme(page, theme, "light");
+    await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+    await report.evaluate((element) =>
+      element.setAttribute("data-theme", "light"),
+    );
+    await applySphinxTheme(page, theme, "dark");
+    await expect(report).toHaveAttribute("data-resolved-theme", "light");
+    await report.evaluate((element) =>
+      element.setAttribute("data-theme", "inherit"),
+    );
+    await expect(report).toHaveAttribute("data-resolved-theme", "dark");
+  });
+
+  for (const property of ["--benched-text-color", "--color-fd-foreground"]) {
+    test(`applies ${property} updates to chart axes`, async ({ page }) => {
+      await page.goto("/");
       const report = page.locator("benched-report");
-      await applyYardangTheme(page, theme, "dark");
-      await expect(report).toHaveAttribute("data-resolved-theme", "dark");
-      expect(await reportPalette(report)).toEqual(THEME_PALETTES.dark);
-
-      await applyYardangTheme(page, theme, "light");
-      await expect(report).toHaveAttribute("data-resolved-theme", "light");
-      expect(await reportPalette(report)).toEqual(THEME_PALETTES.light);
+      await expect(report.locator(".benched-summary-grid")).toBeVisible();
+      await report.evaluate((element, property) => {
+        const host = document.createElement("main");
+        host.style.color = "black";
+        host.style.setProperty(property, "rgb(0, 255, 255)");
+        element.replaceWith(host);
+        element.setAttribute("data-theme", "inherit");
+        element.setAttribute("view", "trend");
+        host.append(element);
+      }, property);
+      await expect(report.locator("canvas").first()).toBeVisible();
+      const originalCanvas = await report
+        .locator("canvas")
+        .first()
+        .elementHandle();
+      await report.evaluate((element, property) => {
+        element.parentElement.style.setProperty(property, "rgb(255, 0, 255)");
+      }, property);
+      await expect
+        .poll(() => originalCanvas.evaluate((canvas) => canvas.isConnected))
+        .toBe(false);
+      for (const selector of [".benched-mini-chart", ".benched-chart"]) {
+        if (selector === ".benched-chart") {
+          await select(page, ".benched-benchmark-select", "benchmark-0");
+        }
+        const chart = report.locator(selector).first();
+        await expect(chart.locator("canvas").first()).toBeVisible();
+        await expect
+          .poll(() =>
+            chart.evaluate((element) => {
+              let colored = 0;
+              for (const canvas of element.querySelectorAll("canvas")) {
+                const pixels = canvas
+                  .getContext("2d")
+                  .getImageData(0, 0, canvas.width, canvas.height).data;
+                for (let index = 0; index < pixels.length; index += 4) {
+                  if (
+                    pixels[index] > 240 &&
+                    pixels[index + 1] < 15 &&
+                    pixels[index + 2] > 240 &&
+                    pixels[index + 3] > 150
+                  )
+                    colored += 1;
+                }
+              }
+              return colored;
+            }),
+          )
+          .toBeGreaterThan(20);
+      }
     });
   }
 
