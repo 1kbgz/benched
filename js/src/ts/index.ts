@@ -140,6 +140,21 @@ function selectedValues(
   );
 }
 
+function chartColor(element: HTMLElement, color: string): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  canvas.hidden = true;
+  canvas.style.color = color;
+  element.append(canvas);
+  const context = canvas.getContext("2d", { willReadFrequently: true })!;
+  // Resolve inherited CSS colors before converting to the chart parser's sRGB format.
+  context.fillStyle = getComputedStyle(canvas).color;
+  context.fillRect(0, 0, 1, 1);
+  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
+  canvas.remove();
+  return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+}
+
 export function chartPriceFormat(values: number[]) {
   const maximum = Math.max(
     0,
@@ -986,6 +1001,11 @@ export class BenchedReport extends HTMLElement {
     container.append(title, value, legend, chartContainer);
 
     const style = getComputedStyle(this);
+    const textColor = chartColor(this, style.color);
+    const gridColor = chartColor(
+      this,
+      style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
+    );
     const axisLabels = new Map<number, string>();
     const versionCoordinates = new Map<string, UTCTimestamp>();
     if (this.xAxis === "version") {
@@ -1021,17 +1041,11 @@ export class BenchedReport extends HTMLElement {
       layout: {
         attributionLogo: false,
         background: { type: ColorType.Solid, color: "transparent" },
-        textColor: style.color,
+        textColor,
       },
       grid: {
-        vertLines: {
-          color:
-            style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
-        },
-        horzLines: {
-          color:
-            style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
-        },
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
       },
       localization:
         this.xAxis === "version"
@@ -1053,7 +1067,10 @@ export class BenchedReport extends HTMLElement {
     );
     const series = groups.map((group, index) => {
       const [property, fallback] = SERIES_COLORS[index % SERIES_COLORS.length];
-      const color = style.getPropertyValue(property).trim() || fallback;
+      const color = chartColor(
+        this,
+        style.getPropertyValue(property).trim() || fallback,
+      );
       const line = chart.addSeries(LineSeries, {
         color,
         priceFormat,
@@ -1169,8 +1186,16 @@ export class BenchedReport extends HTMLElement {
       return (Math.floor(timestamp / 86_400_000) * 86_400) as UTCTimestamp;
     };
     const style = getComputedStyle(this);
+    const textColor = chartColor(this, style.color);
+    const gridColor = chartColor(
+      this,
+      style.getPropertyValue("--_benched-grid-color").trim() || "#d8dee9",
+    );
     const [property, fallback] = SERIES_COLORS[0];
-    const color = style.getPropertyValue(property).trim() || fallback;
+    const color = chartColor(
+      this,
+      style.getPropertyValue(property).trim() || fallback,
+    );
 
     for (const benchmark of benchmarks) {
       const values = new Map<UTCTimestamp, number[]>();
@@ -1229,19 +1254,11 @@ export class BenchedReport extends HTMLElement {
           layout: {
             attributionLogo: false,
             background: { type: ColorType.Solid, color: "transparent" },
-            textColor: style.color,
+            textColor,
           },
           grid: {
-            vertLines: {
-              color:
-                style.getPropertyValue("--_benched-grid-color").trim() ||
-                "#d8dee9",
-            },
-            horzLines: {
-              color:
-                style.getPropertyValue("--_benched-grid-color").trim() ||
-                "#d8dee9",
-            },
+            vertLines: { color: gridColor },
+            horzLines: { color: gridColor },
           },
           localization:
             this.xAxis === "version"

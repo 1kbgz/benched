@@ -261,6 +261,14 @@ body:has(> benched-report.wa-dark:only-child) {
   width: 100%;
 }
 
+benched-report :is(.benched-chart, .benched-mini-chart) :is(table, tr, td) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+}
+
 .benched-trend-description {
   color: var(--wa-color-text-quiet, #64748b);
   margin-block: 0 var(--wa-space-m, 1rem);

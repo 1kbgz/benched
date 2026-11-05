@@ -529,6 +529,136 @@ test.describe("Benched report", () => {
     await expect(report).toHaveCSS("color", "rgb(22, 28, 36)");
   });
 
+  for (const benchmark of [null, "tests/test_parse.py::test_parse|size=100"]) {
+    test(`isolates ${benchmark ? "detail" : "matrix"} chart layout from host tables`, async ({
+      page,
+    }) => {
+      await page.goto("/");
+      await page.addStyleTag({
+        content: `
+          .fd-prose table {
+            width: 100%; margin: 1.25rem 0; border-collapse: separate;
+            border-spacing: 0; border: 1px solid gray; border-radius: 0.75rem;
+            font-size: 0.875rem; overflow: hidden;
+          }
+          .fd-prose td { border-bottom: 1px solid gray; padding: 0.75rem; }
+        `,
+      });
+      const report = page.locator("benched-report");
+      await expect(report.locator(".benched-summary-grid")).toBeVisible();
+      await report.evaluate((element, benchmark) => {
+        const host = document.createElement("main");
+        host.className = "fd-prose";
+        element.replaceWith(host);
+        element.setAttribute("view", "trend");
+        if (benchmark) element.setAttribute("benchmark", benchmark);
+        host.append(element);
+      }, benchmark);
+      const chart = report
+        .locator(benchmark ? ".benched-chart" : ".benched-mini-chart")
+        .first();
+      await expect(chart.locator("canvas").first()).toBeVisible();
+      const heights = await chart.evaluate(async (element) => {
+        const heights = [];
+        for (let frame = 0; frame < 10; frame += 1) {
+          await new Promise(requestAnimationFrame);
+          heights.push(element.getBoundingClientRect().height);
+        }
+        return heights;
+      });
+      expect(heights).toEqual(Array(10).fill(benchmark ? 480 : 240));
+      await expect(chart.locator("table")).toHaveCSS("margin", "0px");
+      await expect(chart.locator("td").first()).toHaveCSS(
+        "border-bottom-width",
+        "0px",
+      );
+      if (benchmark) {
+        await expect(report.locator(".benched-exact-values table")).toHaveCSS(
+          "border-top-width",
+          "1px",
+        );
+      }
+    });
+
+    test(`renders ${benchmark ? "detail" : "matrix"} charts with modern host colors`, async ({
+      page,
+    }) => {
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.goto("/");
+      const report = page.locator("benched-report");
+      await expect(report.locator(".benched-summary-grid")).toBeVisible();
+      await report.evaluate((element, benchmark) => {
+        const host = document.createElement("main");
+        host.style.backgroundColor = "rgb(18, 24, 32)";
+        host.style.color = "color(srgb 0.921569 0.921569 0.921569 / 0.9)";
+        host.style.setProperty(
+          "--benched-accent-color",
+          "oklch(62.8% 0.258 29.23)",
+        );
+        host.style.setProperty(
+          "--wa-color-orange-60",
+          "color(display-p3 0 0 1)",
+        );
+        element.replaceWith(host);
+        element.setAttribute("data-theme", "inherit");
+        element.setAttribute("view", "trend");
+        if (benchmark) element.setAttribute("benchmark", benchmark);
+        host.append(element);
+      }, benchmark);
+
+      const chart = report
+        .locator(benchmark ? ".benched-chart" : ".benched-mini-chart")
+        .first();
+      await expect(chart).toBeVisible();
+      await chart.scrollIntoViewIfNeeded();
+      await expect(chart.locator("canvas").first()).toBeVisible();
+      await expect
+        .poll(() =>
+          chart.evaluate((element) => {
+            const canvas = element.querySelector("canvas");
+            const pixels = canvas
+              .getContext("2d")
+              .getImageData(0, 0, canvas.width, canvas.height).data;
+            let red = 0;
+            let blue = 0;
+            let grid = 0;
+            for (let index = 0; index < pixels.length; index += 4) {
+              if (
+                pixels[index] > 200 &&
+                pixels[index + 1] < 60 &&
+                pixels[index + 2] < 60 &&
+                pixels[index + 3] > 200
+              )
+                red += 1;
+              if (
+                pixels[index] < 60 &&
+                pixels[index + 1] < 60 &&
+                pixels[index + 2] > 200 &&
+                pixels[index + 3] > 200
+              )
+                blue += 1;
+              if (
+                pixels[index] > 225 &&
+                pixels[index + 1] > 225 &&
+                pixels[index + 2] > 225 &&
+                pixels[index + 3] >= 45 &&
+                pixels[index + 3] <= 55
+              )
+                grid += 1;
+            }
+            return { red: red > 20, blue: blue > 20, grid: grid > 20 };
+          }),
+        )
+        .toMatchObject({
+          red: true,
+          grid: true,
+          ...(benchmark ? { blue: true } : {}),
+        });
+      expect(errors).toEqual([]);
+    });
+  }
+
   for (const theme of YARDANG_THEMES) {
     test(`adapts to ${theme.name} light and dark modes`, async ({ page }) => {
       await page.goto("/");
