@@ -13,7 +13,9 @@ current suite once, then backfills 30 revisions across five machines and three P
 versions.
 
 ```{benched} ../../build/docs-results
-:view: trend
-:metric: median
-:x-axis: version
+---
+view: trend
+metric: median
+x-axis: version
+---
 ```
