@@ -47,7 +47,7 @@ develop = [
     "hatchling",
     "jsonschema>=4.23",
     "mdformat",
-    "mdformat-frontmatter",
+    "mdformat-myst",
     "mdformat-tables>=1",
     "pyarrow",
     "pytest",

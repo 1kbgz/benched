@@ -102,13 +102,15 @@ This live example preselects two machines, two Python versions, and two memory b
 while omitting their controls:
 
 ```{benched} ../../../build/docs-results
-:view: trend
-:metric: median
-:x-axis: version
-:machine: demo-linux-x86,demo-macos-arm
-:python: 3.11,3.12
-:memory: 16,32
-:hide-controls: view,metric,x-axis,benchmark,machine,python,memory
+---
+view: trend
+metric: median
+x-axis: version
+machine: demo-linux-x86,demo-macos-arm
+python: 3.11,3.12
+memory: 16,32
+hide-controls: view,metric,x-axis,benchmark,machine,python,memory
+---
 ```
 
 ## Match the surrounding Sphinx theme
